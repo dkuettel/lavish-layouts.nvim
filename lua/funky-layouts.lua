@@ -10,9 +10,8 @@ function M.switch(layout)
     M.layout:arrange(windows)
 end
 
----@param make fun() create and make current the desired window that will then be arranged
-function M.new(make)
-    M.layout:new(make)
+function M.new()
+    M.layout:new()
 end
 
 function M.next()
@@ -56,9 +55,9 @@ function M.layouts.main:get_windows()
     return vim.api.nvim_tabpage_list_wins(0)
 end
 
-function M.layouts.main:new(make)
+function M.layouts.main:new()
     local stack = self:get_windows()
-    make()
+    vim.cmd.split()
     local main = vim.api.nvim_get_current_win()
     local windows = { main, unpack(stack) }
     self:arrange(windows)
@@ -121,7 +120,7 @@ end
 
 function M.layouts.stacked:new(make)
     local windows = self:get_windows()
-    make()
+    vim.cmd.split()
     local window = vim.api.nvim_get_current_win()
     windows = { window, unpack(windows) }
     self:arrange(windows)
@@ -185,7 +184,7 @@ end
 
 function M.layouts.tiled:new(make)
     local windows = self:get_windows()
-    make()
+    vim.cmd.split()
     local window = vim.api.nvim_get_current_win()
     windows = { window, unpack(windows) }
     self:arrange(windows)
@@ -241,6 +240,7 @@ function M.switch_tiled()
     M.switch(M.layouts.tiled)
 end
 
+-- TODO remove?
 function M.new_from_split()
     M.new(vim.cmd.split)
 end
