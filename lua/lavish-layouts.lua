@@ -4,6 +4,12 @@ M.layouts = { main = {}, stacked = {}, tiled = {} }
 
 M.layout = M.layouts.main
 
+function M.setup()
+    vim.api.nvim_create_user_command("Layout", function(args)
+        M.switch(M.layouts[args.fargs[1]])
+    end, { nargs = 1, desc = "switch layout" })
+end
+
 function M.switch(layout)
     local windows = M.layout:get_windows()
     M.layout = layout
