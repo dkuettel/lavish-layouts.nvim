@@ -5,6 +5,8 @@ M.layouts = { main = {}, stacked = {}, tiled = {} }
 M.layout = M.layouts.main
 
 function M.setup()
+    local bg0_h = "#f9f5d7"
+    vim.api.nvim_set_hl(0, "NormalCreated", { bg = bg0_h })
     vim.api.nvim_create_user_command("Layout", function(args)
         M.switch(M.layouts[args.fargs[1]])
     end, { nargs = 1, desc = "switch layout" })
@@ -18,6 +20,12 @@ end
 
 function M.new()
     M.layout:new()
+    vim.wo.winhighlight = "Normal:NormalCreated"
+    local function reset()
+        -- TODO we might not be in the same window anymore, and or other things might have been in this value?
+        vim.wo.winhighlight = ""
+    end
+    vim.defer_fn(reset, 500)
 end
 
 function M.next()
