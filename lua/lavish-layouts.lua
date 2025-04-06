@@ -51,6 +51,14 @@ function M.close_and_delete()
     vim.api.nvim_buf_delete(buffer, { force = true })
 end
 
+local function close_window_or_clear()
+    if #vim.api.nvim_list_wins()>1 then
+        vim.api.nvim_win_close(0, true)
+    else
+        vim.cmd.enew()
+    end
+end
+
 ---@param windows? integer[] window handles in layout order
 function M.layouts.main:arrange(windows)
     -- windows = [main, stack, stack, ...]
@@ -117,7 +125,7 @@ function M.layouts.main:focus(window)
 end
 
 function M.layouts.main:close()
-    vim.api.nvim_win_close(0, true)
+    close_window_or_clear()
     self:arrange()
 end
 
@@ -172,7 +180,7 @@ function M.layouts.stacked:focus(window)
 end
 
 function M.layouts.stacked:close()
-    vim.api.nvim_win_close(0, true)
+    close_window_or_clear()
     self:arrange()
 end
 
@@ -244,7 +252,7 @@ function M.layouts.tiled:focus(window)
 end
 
 function M.layouts.tiled:close()
-    vim.api.nvim_win_close(0, true)
+    close_window_or_clear()
     self:arrange()
 end
 
