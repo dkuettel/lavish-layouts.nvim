@@ -45,6 +45,12 @@ function M.close()
     M.layout:close()
 end
 
+function M.close_and_delete()
+    local buffer = vim.api.nvim_get_current_buf()
+    M.layout:close()
+    vim.api.nvim_buf_delete(buffer, { force = true })
+end
+
 ---@param windows? integer[] window handles in layout order
 function M.layouts.main:arrange(windows)
     -- windows = [main, stack, stack, ...]
