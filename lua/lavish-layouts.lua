@@ -25,7 +25,7 @@ function M.new()
         -- TODO we might not be in the same window anymore, and or other things might have been in this value?
         vim.wo.winhighlight = ""
     end
-    vim.defer_fn(reset, 500)
+    vim.defer_fn(reset, 250)
 end
 
 function M.next()
