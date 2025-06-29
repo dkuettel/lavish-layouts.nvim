@@ -52,7 +52,7 @@ function M.close_and_delete()
 end
 
 local function close_window_or_clear()
-    if #vim.api.nvim_list_wins()>1 then
+    if #vim.api.nvim_tabpage_list_wins(0) > 1 then
         vim.api.nvim_win_close(0, true)
     else
         vim.cmd.enew()
