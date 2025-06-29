@@ -17,6 +17,15 @@ function M.setup()
     vim.api.nvim_create_user_command("Layout", function(args)
         M.switch(M.layouts[args.fargs[1]])
     end, { nargs = 1, desc = "switch layout" })
+    -- TODO if you :bd yourself, then layouts wont know, we could work with events, if really needed
+    -- but i cant find a good event for that, plus events have a tendency to make layouts do double or triple work
+    vim.api.nvim_create_autocmd({ "VimResized" }, {
+        desc = "lavish-layouts",
+        callback = function()
+            M.layout:arrange()
+        end,
+        nested = true,
+    })
 end
 
 function M.switch(layout)
