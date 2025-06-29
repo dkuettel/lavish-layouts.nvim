@@ -1,5 +1,12 @@
 local M = {}
 
+-- NOTE when a window goes to the stack or "background", it usually gets smaller
+-- the current behaviour is so that the view in that window shifts so that you
+-- still see the cursor location, together with scrolloff that usually centers
+-- the current line in that small view. when you later take that window again
+-- back to main, there is no data to really exactly restore the view you had
+-- before backgrounding it, and its then centered again. could be unintuitive?
+
 M.layouts = { main = {}, stacked = {}, tiled = {} }
 
 M.layout = M.layouts.main
