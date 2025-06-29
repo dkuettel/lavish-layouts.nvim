@@ -137,9 +137,8 @@ function M.layouts.stacked:arrange(windows)
         vim.api.nvim_set_current_win(w)
         vim.cmd.wincmd("K")
     end
-    vim.api.nvim_set_current_win(windows[1])
-    vim.cmd.wincmd("_")
     vim.api.nvim_set_current_win(window)
+    vim.cmd.wincmd("_")
 end
 
 function M.layouts.stacked:get_windows()
