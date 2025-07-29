@@ -22,7 +22,7 @@ M.layouts = { main = {}, stacked = {}, tiled = {} }
 
 function M.setup()
     local bg0_h = "#f9f5d7"
-    vim.opts.sessionoptions:append("globals") -- NOTE to restore the layout when loading session
+    vim.opt.sessionoptions:append("globals") -- NOTE to restore the layout when loading session
     vim.g.Layout = vim.g.Layout or "main"
     vim.api.nvim_set_hl(0, "NormalCreated", { bg = bg0_h })
     vim.api.nvim_create_user_command("Layout", function(args)
