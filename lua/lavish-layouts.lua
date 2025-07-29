@@ -7,12 +7,23 @@ local M = {}
 -- back to main, there is no data to really exactly restore the view you had
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
+---@alias LayoutName "main" | "stacked" | "tiled"
+
+-- TODO should type the any part here, classes?
+---@type table<LayoutName, any>
 M.layouts = { main = {}, stacked = {}, tiled = {} }
 
-M.layout = M.layouts.main
+-- NOTE we have one global layout (saved as a name in vim.g.Layout)
+-- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
+-- (we also then need to make sure sessions save it)
+
+-- TODO now with a global layout, we should probably use events like TabEnter TabLeave TabNew TabNewEntered TabClosed
+-- similar to VimResized to relayout in the right moments? or leave it to the user on his tab switch mappings?
 
 function M.setup()
     local bg0_h = "#f9f5d7"
+    vim.opts.sessionoptions:append("globals") -- NOTE to restore the layout when loading session
+    vim.g.Layout = vim.g.Layout or "main"
     vim.api.nvim_set_hl(0, "NormalCreated", { bg = bg0_h })
     vim.api.nvim_create_user_command("Layout", function(args)
         M.switch(M.layouts[args.fargs[1]])
@@ -22,20 +33,32 @@ function M.setup()
     vim.api.nvim_create_autocmd({ "VimResized" }, {
         desc = "lavish-layouts",
         callback = function()
-            M.layout:arrange()
+            get_layout():arrange()
         end,
         nested = true,
     })
 end
 
-function M.switch(layout)
-    local windows = M.layout:get_windows()
-    M.layout = layout
-    M.layout:arrange(windows)
+---@param name? LayoutName
+---@return any
+function get_layout(name)
+    if name == nil then
+        ---@type LayoutName
+        name = vim.g.Layout or "main"
+    end
+    return M.layouts[name]
+end
+
+-- TODO when is a session loaded? after we set the default with this or before?
+---@param name LayoutName
+function M.switch(name)
+    local windows = get_layout():get_windows()
+    vim.g.Layout = name
+    get_layout():arrange(windows)
 end
 
 function M.new()
-    M.layout:new()
+    get_layout():new()
     vim.wo.winhighlight = "Normal:NormalCreated"
     local function reset()
         -- TODO we might not be in the same window anymore, and or other things might have been in this value?
@@ -45,25 +68,25 @@ function M.new()
 end
 
 function M.next()
-    M.layout:next()
+    get_layout():next()
 end
 
 function M.previous()
-    M.layout:previous()
+    get_layout():previous()
 end
 
 ---@param window? integer window to focus on (defaults to current)
 function M.focus(window)
-    M.layout:focus(window)
+    get_layout():focus(window)
 end
 
 function M.close()
-    M.layout:close()
+    get_layout():close()
 end
 
 function M.close_and_delete()
     local buffer = vim.api.nvim_get_current_buf()
-    M.layout:close()
+    get_layout():close()
     vim.api.nvim_buf_delete(buffer, { force = true })
 end
 
@@ -272,20 +295,19 @@ function M.layouts.tiled:close()
 end
 
 function M.switch_main()
-    M.switch(M.layouts.main)
+    M.switch("main")
 end
 
 function M.switch_stacked()
-    M.switch(M.layouts.stacked)
+    M.switch("stacked")
 end
 
 function M.switch_tiled()
-    M.switch(M.layouts.tiled)
+    M.switch("tiled")
 end
 
--- TODO remove?
 function M.new_from_split()
-    M.new(vim.cmd.split)
+    M.new()
 end
 
 -- TODO but how to make it when the picker is not a file? ah wait always files, but the line?
