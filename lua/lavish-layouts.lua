@@ -84,6 +84,12 @@ function M.close()
     get_layout():close()
 end
 
+function M.close_and_delete()
+    local buffer = vim.api.nvim_get_current_buf()
+    get_layout():close()
+    vim.api.nvim_buf_delete(buffer, { force = true })
+end
+
 local function close_window_or_clear()
     if #vim.api.nvim_tabpage_list_wins(0) > 1 then
         vim.api.nvim_win_close(0, true)
