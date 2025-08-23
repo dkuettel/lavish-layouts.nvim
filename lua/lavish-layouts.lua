@@ -84,10 +84,13 @@ function M.close()
     get_layout():close()
 end
 
+--close the window and delete the buffer
+--if it is the last window, it will stay, but switch to the next loaded buffer
+--(just like :bd)
 function M.close_and_delete()
     local buffer = vim.api.nvim_get_current_buf()
-    get_layout():close()
     vim.api.nvim_buf_delete(buffer, { force = true })
+    get_layout():arrange()
 end
 
 local function close_window_or_clear()
