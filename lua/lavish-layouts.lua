@@ -75,7 +75,7 @@ function M.previous()
     get_layout():previous()
 end
 
----@param window? integer window to focus on (defaults to current)
+---@param window? integer window to focus on (defaults to current), and if already focused, it will flip with the secondary focused window
 function M.focus(window)
     get_layout():focus(window)
 end
@@ -107,10 +107,28 @@ local function close_window_or_clear()
     end
 end
 
+---@param order "forward" | "backward"
+---@return integer[] windows window handles without floating windows
+local function get_windows(order)
+    local windows
+    if order == "forward" then
+        windows = vim.api.nvim_tabpage_list_wins(0)
+    elseif order == "backward" then
+        windows = vim.fn.reverse(vim.api.nvim_tabpage_list_wins(0))
+    else
+        assert(false)
+    end
+    windows = vim.tbl_filter(function(window)
+        local config = vim.api.nvim_win_get_config(window)
+        return config.relative == "" -- this means it is not a floating window
+    end, windows)
+    return windows
+end
+
 ---@param windows? integer[] window handles in layout order
 function M.layouts.main:arrange(windows)
     -- windows = [main, stack, stack, ...]
-    local window = vim.api.nvim_get_current_win()
+    local focus = vim.api.nvim_get_current_win()
     windows = windows or self:get_windows()
     for i, w in ipairs(windows) do
         if i > 1 then
@@ -123,12 +141,12 @@ function M.layouts.main:arrange(windows)
     vim.cmd.wincmd("H")
     -- TODO make this relative to current terminal size, and how to re-arrange when things change?
     vim.cmd.wincmd("10>")
-    vim.api.nvim_set_current_win(window)
+    vim.api.nvim_set_current_win(focus)
 end
 
 ---@return integer[] windows window handles in layout order
 function M.layouts.main:get_windows()
-    return vim.api.nvim_tabpage_list_wins(0)
+    return get_windows("forward")
 end
 
 function M.layouts.main:new()
@@ -161,13 +179,13 @@ function M.layouts.main:focus(window)
     local focus = window or vim.api.nvim_get_current_win()
     local windows = self:get_windows()
     if focus == windows[1] then
-        vim.cmd.wincmd("w")
-        focus = vim.api.nvim_get_current_win()
+        focus = windows[2] or focus
     end
     windows = vim.tbl_filter(function(v)
         return v ~= focus
     end, windows)
     windows = { focus, unpack(windows) }
+    vim.api.nvim_set_current_win(focus)
     self:arrange(windows)
     vim.api.nvim_set_current_win(focus)
 end
@@ -190,7 +208,7 @@ function M.layouts.stacked:arrange(windows)
 end
 
 function M.layouts.stacked:get_windows()
-    return vim.fn.reverse(vim.api.nvim_tabpage_list_wins(0))
+    return get_windows("backward")
 end
 
 function M.layouts.stacked:new(make)
@@ -215,13 +233,13 @@ function M.layouts.stacked:focus(window)
     local focus = window or vim.api.nvim_get_current_win()
     local windows = self:get_windows()
     if focus == windows[1] then
-        vim.cmd.wincmd("w")
-        focus = vim.api.nvim_get_current_win()
+        focus = windows[2] or focus
     end
     windows = vim.tbl_filter(function(v)
         return v ~= focus
     end, windows)
     windows = { focus, unpack(windows) }
+    vim.api.nvim_set_current_win(focus)
     self:arrange(windows)
     vim.api.nvim_set_current_win(focus)
 end
@@ -254,7 +272,7 @@ function M.layouts.tiled:arrange(windows)
 end
 
 function M.layouts.tiled:get_windows()
-    return vim.api.nvim_tabpage_list_wins(0)
+    return get_windows("forward")
 end
 
 function M.layouts.tiled:new(make)
@@ -287,13 +305,13 @@ function M.layouts.tiled:focus(window)
     local focus = window or vim.api.nvim_get_current_win()
     local windows = self:get_windows()
     if focus == windows[1] then
-        vim.cmd.wincmd("w")
-        focus = vim.api.nvim_get_current_win()
+        focus = windows[2] or focus
     end
     windows = vim.tbl_filter(function(v)
         return v ~= focus
     end, windows)
     windows = { focus, unpack(windows) }
+    vim.api.nvim_set_current_win(focus)
     self:arrange(windows)
     vim.api.nvim_set_current_win(focus)
 end
