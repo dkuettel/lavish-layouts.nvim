@@ -84,26 +84,18 @@ function M.close()
     get_layout():close()
 end
 
---close the window and delete the buffer
---if it is the last window, it will stay, but switch to the next loaded buffer
---(just like :bd)
+--close the window and delete the buffer, just like :bd
+--(if last window in last tab, it will switch to the next loaded buffer)
 function M.close_and_delete()
-    local buffer = vim.api.nvim_get_current_buf()
-    vim.api.nvim_buf_delete(buffer, { force = true })
+    vim.api.nvim_buf_delete(0, { force = true })
     get_layout():arrange()
 end
 
 local function close_window_or_clear()
-    if #vim.api.nvim_tabpage_list_wins(0) > 1 then
+    if #vim.api.nvim_list_tabpages() > 1 or #vim.api.nvim_tabpage_list_wins(0) > 1 then
         vim.api.nvim_win_close(0, true)
     else
-        -- NOTE make a buffer that should disappear as soon as it's not visible anymore
-        local buffer = vim.api.nvim_create_buf(false, true)
-        vim.bo[buffer].bufhidden = "wipe"
-        vim.bo[buffer].buftype = "nofile"
-        vim.bo[buffer].swapfile = false
-        vim.bo[buffer].modifiable = false
-        vim.api.nvim_win_set_buf(0, buffer)
+        vim.cmd([[:e .]])
     end
 end
 
