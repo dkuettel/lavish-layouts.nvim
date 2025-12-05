@@ -84,10 +84,13 @@ function M.close()
     get_layout():close()
 end
 
---close the window and delete the buffer, just like :bd
---(if last window in last tab, it will switch to the next loaded buffer)
+--close the window and delete the buffer, similar to :bd
+--but open "e ." (maybe with oil), if last buffer
 function M.close_and_delete()
     vim.api.nvim_buf_delete(0, { force = true })
+    if vim.api.nvim_buf_get_name(0) == "" then
+        vim.cmd([[:e .]])
+    end
     get_layout():arrange()
 end
 
