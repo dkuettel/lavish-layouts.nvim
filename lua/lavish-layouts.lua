@@ -7,11 +7,12 @@ local M = {}
 -- back to main, there is no data to really exactly restore the view you had
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
----@alias LayoutName "main" | "stacked" | "tiled"
+-- TODO the dynamic layout should be a table that configures the conditions
+---@alias LayoutName "main" | "stacked" | "tiled" | "dynamic"
 
 -- TODO should type the any part here, classes?
 ---@type table<LayoutName, any>
-M.layouts = { main = {}, stacked = {}, tiled = {} }
+M.layouts = { main = {}, stacked = {}, tiled = {}, dynamic = {} }
 
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
@@ -22,7 +23,7 @@ M.layouts = { main = {}, stacked = {}, tiled = {} }
 
 function M.setup()
     local bg0_h = "#f9f5d7"
-    vim.opt.sessionoptions:append("globals") -- NOTE to restore the layout when loading session
+    vim.opt.sessionoptions:append("globals") -- NOTE to restore the layout when re-loading sessions
     vim.g.Layout = vim.g.Layout or "main"
     vim.api.nvim_set_hl(0, "NormalCreated", { bg = bg0_h })
     vim.api.nvim_create_user_command("Layout", function(args)
@@ -314,6 +315,52 @@ end
 function M.layouts.tiled:close()
     close_window_or_clear()
     self:arrange()
+end
+
+local current_dynamic_layout = nil
+
+---@param windows? integer[] window handles in layout order
+function M.layouts.dynamic:arrange(windows)
+    local layout
+    if vim.o.columns > 120 then
+        layout = "main"
+    else
+        layout = "stacked"
+    end
+    if windows == nil and current_dynamic_layout ~= layout then
+        windows = M.layouts[current_dynamic_layout]:get_windows()
+    end
+    current_dynamic_layout = layout
+    M.layouts[current_dynamic_layout]:arrange(windows)
+end
+
+---@return integer[] windows window handles in layout order
+function M.layouts.dynamic:get_windows()
+    return M.layouts[current_dynamic_layout]:get_windows()
+end
+
+function M.layouts.dynamic:new()
+    M.layouts[current_dynamic_layout]:new()
+end
+
+function M.layouts.dynamic:previous()
+    M.layouts[current_dynamic_layout]:previous()
+end
+
+function M.layouts.dynamic:next()
+    M.layouts[current_dynamic_layout]:next()
+end
+
+function M.layouts.dynamic:focus(window)
+    M.layouts[current_dynamic_layout]:focus(window)
+end
+
+function M.layouts.dynamic:close()
+    M.layouts[current_dynamic_layout]:close()
+end
+
+function M.switch_dynamic()
+    M.switch("dynamic")
 end
 
 function M.switch_main()
