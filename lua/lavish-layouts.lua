@@ -322,7 +322,7 @@ local current_dynamic_layout = nil
 ---@param windows? integer[] window handles in layout order
 function M.layouts.dynamic:arrange(windows)
     local layout
-    if vim.o.columns > 120 then
+    if vim.o.columns > 170 then
         layout = "main"
     else
         layout = "stacked"
