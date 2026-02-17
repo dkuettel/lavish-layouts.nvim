@@ -136,7 +136,8 @@ function M.layouts.main:arrange(windows)
     vim.api.nvim_set_current_win(windows[1])
     vim.cmd.wincmd("H")
     -- TODO make this relative to current terminal size, and how to re-arrange when things change?
-    vim.cmd.wincmd("10>")
+    -- TODO maybe half-half is better? same views left and right
+    -- vim.cmd.wincmd("10>")
     vim.api.nvim_set_current_win(focus)
 end
 
@@ -322,7 +323,7 @@ local current_dynamic_layout = nil
 ---@param windows? integer[] window handles in layout order
 function M.layouts.dynamic:arrange(windows)
     local layout
-    if vim.o.columns > 170 then
+    if vim.o.columns > 190 then
         layout = "main"
     else
         layout = "stacked"
