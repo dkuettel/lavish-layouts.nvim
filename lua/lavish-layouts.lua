@@ -158,20 +158,22 @@ function M.layouts.main:new()
 end
 
 function M.layouts.main:previous()
-    local focus = vim.api.nvim_get_current_win()
-    local windows = vim.api.nvim_tabpage_list_wins(0)
-    if focus == windows[1] then
-        return
-    end
+    -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
+    -- local focus = vim.api.nvim_get_current_win()
+    -- local windows = vim.api.nvim_tabpage_list_wins(0)
+    -- if focus == windows[1] then
+    --     return
+    -- end
     vim.cmd.wincmd("W")
 end
 
 function M.layouts.main:next()
-    local focus = vim.api.nvim_get_current_win()
-    local windows = vim.api.nvim_tabpage_list_wins(0)
-    if focus == windows[#windows] then
-        return
-    end
+    -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
+    -- local focus = vim.api.nvim_get_current_win()
+    -- local windows = vim.api.nvim_tabpage_list_wins(0)
+    -- if focus == windows[#windows] then
+    --     return
+    -- end
     vim.cmd.wincmd("w")
 end
 
