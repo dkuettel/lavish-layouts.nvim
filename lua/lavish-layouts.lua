@@ -21,6 +21,16 @@ M.layouts = { main = {}, stacked = {}, tiled = {}, dynamic = {} }
 -- TODO now with a global layout, we should probably use events like TabEnter TabLeave TabNew TabNewEntered TabClosed
 -- similar to VimResized to relayout in the right moments? or leave it to the user on his tab switch mappings?
 
+---@param name? LayoutName
+---@return any
+function get_layout(name)
+    if name == nil then
+        ---@type LayoutName
+        name = vim.g.Layout or "main"
+    end
+    return M.layouts[name]
+end
+
 function M.setup()
     local bg0_h = "#f9f5d7"
     vim.opt.sessionoptions:append("globals") -- NOTE to restore the layout when re-loading sessions
@@ -38,16 +48,14 @@ function M.setup()
         end,
         nested = true,
     })
-end
 
----@param name? LayoutName
----@return any
-function get_layout(name)
-    if name == nil then
-        ---@type LayoutName
-        name = vim.g.Layout or "main"
+    vim.api.nvim_create_autocmd({ "VimEnter" }, {
+        callback = function()
+            get_layout():arrange()
+        end,
+        once = true,
+    })
     end
-    return M.layouts[name]
 end
 
 -- TODO when is a session loaded? after we set the default with this or before?
