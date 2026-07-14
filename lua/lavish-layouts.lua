@@ -196,6 +196,7 @@ function M.layouts.main:next()
     vim.cmd.wincmd("w")
 end
 
+---@param window? integer
 function M.layouts.main:focus(window)
     local focus = window or vim.api.nvim_get_current_win()
     local windows = self:get_windows()
