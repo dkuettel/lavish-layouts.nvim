@@ -17,6 +17,7 @@ M.layouts = { main = {}, stacked = {}, tiled = {}, dynamic = {} }
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
 -- (we also then need to make sure sessions save it)
+-- There is also vim.g.LayoutDesc that has a description of the current layout for the statusline.
 
 -- TODO now with a global layout, we should probably use events like TabEnter TabLeave TabNew TabNewEntered TabClosed
 -- similar to VimResized to relayout in the right moments? or leave it to the user on his tab switch mappings?
@@ -70,6 +71,7 @@ end
 function M.switch(name)
     local windows = get_layout():get_windows()
     vim.g.Layout = name
+    vim.g.LayoutDesc = name
     get_layout():arrange(windows)
 end
 
@@ -403,6 +405,7 @@ function M.layouts.dynamic:arrange(windows)
     else
         layout = "stacked"
     end
+    vim.g.LayoutDesc = "dynamic/" .. layout
     -- TODO it doesnt work for nvim -o ... because we get called on the first file, then splits are applied, but we dont use the event
     -- that was on purpose... should we try the event?
     -- BufWinEnter, VimEnter is probably it, the Win* events could be useful
