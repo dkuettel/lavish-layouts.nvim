@@ -55,7 +55,14 @@ function M.setup()
         end,
         once = true,
     })
+
+    -- TODO to check if things bounce around and are not idempotent
+    function again()
+        vim.notify("bounce")
+        get_layout():arrange()
+        vim.defer_fn(again, 1000)
     end
+    vim.defer_fn(again, 1000)
 end
 
 -- TODO when is a session loaded? after we set the default with this or before?
@@ -119,6 +126,8 @@ end
 local function get_windows(order)
     local windows
     if order == "forward" then
+        -- TODO hm also here we get way too many windows than what I actually see
+        -- the layouting process seems robust to that? or is the filter later working it out?
         windows = vim.api.nvim_tabpage_list_wins(0)
     elseif order == "backward" then
         windows = vim.fn.reverse(vim.api.nvim_tabpage_list_wins(0))
@@ -132,27 +141,62 @@ local function get_windows(order)
     return windows
 end
 
----@param windows? integer[] window handles in layout order
+-- TODO arranges seem to change views somehow, especially after a pair of wf wf, or after w space space and close, things move, unexpected
+-- when a focused window moves to the stack, its smaller, so its not clear there what to show, you cant show the same
+-- showing around the cursor makes most sense? that seems to have been the important part?
+-- but then when that window becomes big again, what to show and at what view exactly? the info is lost
+-- very clear, and maybe best testet in stacked layout, since they make the stacked view just one row in size
+-- vim has some view safe functions, every layout does the logic for the important windows somehow? or for those windows with the same geometry?
+-- but even so, even the main window can change, how does vim handle it natively in these cases? hm its quite proportional, even after squeezing, how can it keep the proportion then?
+-- no, it seems to be off a bit when squeezing much, with large font
+-- maybe the scroll-off is what breaks it? what can we expect from stacked, when its just one row anyway?
+-- vim.fn.winsave view and winrestview works well when no geom changes, not sure how gracefully it handles it when you apply it to a differen size later
+-- hm second time it messes up other windows too (no more stack sandwiches); ah no that is just the command buffer view that has this problem, another thing to solve
+-- vim.fn.winrestview works reasonable when resizing and applying again, maybe thats it? we keep the original winsave, until you act on a window? and apply it everytime?
+--    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
+-- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
+---@param windows? integer[] window handles in layout order: main, stack, stack, ...
 function M.layouts.main:arrange(windows)
-    -- windows = [main, stack, stack, ...]
     local focus = vim.api.nvim_get_current_win()
-    windows = windows or self:get_windows()
+    -- TODO emmylua doesnt understand self? and then the windows type is broken; hm no probably just because I didnt really make it a class yet; the type is any for M.layouts.main
+    ---@type integer[]
+    windows = windows or self:get_windows() -- order: main, stack, stack, ...
+    local view = nil
+    if windows[1] then
+        vim.api.nvim_win_call(windows[1], function()
+            view = vim.fn.winsaveview()
+        end)
+    end
+    -- vim.notify("arranging main for " .. vim.inspect(windows))
     for i, w in ipairs(windows) do
         if i > 1 then
-            vim.api.nvim_set_current_win(w)
-            vim.cmd.wincmd("J")
+            vim.api.nvim_win_call(w, function()
+                vim.cmd.wincmd("J")
+            end)
         end
     end
-    -- TODO we set focuses, could that interfere?
-    vim.api.nvim_set_current_win(windows[1])
-    vim.cmd.wincmd("H")
-    -- TODO make this relative to current terminal size, and how to re-arrange when things change?
-    -- TODO maybe half-half is better? same views left and right
-    -- vim.cmd.wincmd("10>")
+    if windows[1] then
+        vim.api.nvim_win_call(windows[1], function()
+            vim.cmd.wincmd("H")
+            if view then
+                vim.fn.winrestview(view)
+            end
+            vim.wo.scrolloff = -1
+        end)
+    end
+    -- TODO actually when just two windows, then we want to restore views, starting with 3, we want the top-policy
+    for i, w in ipairs(windows) do
+        if i > 1 then
+            vim.api.nvim_win_call(w, function()
+                vim.wo.scrolloff = 0
+                vim.cmd.normal { "zt", bang = true }
+            end)
+        end
+    end
     vim.api.nvim_set_current_win(focus)
 end
 
----@return integer[] windows window handles in layout order
+---@return integer[] windows window handles in layout order: main, stack, stack, ...
 function M.layouts.main:get_windows()
     return get_windows("forward")
 end
@@ -186,6 +230,7 @@ function M.layouts.main:previous()
     vim.cmd.wincmd("W")
 end
 
+-- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
 function M.layouts.main:next()
     -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
     -- local focus = vim.api.nvim_get_current_win()
@@ -209,7 +254,8 @@ function M.layouts.main:focus(window)
     windows = { focus, unpack(windows) }
     vim.api.nvim_set_current_win(focus)
     self:arrange(windows)
-    vim.api.nvim_set_current_win(focus)
+    vim.cmd.normal { "zz", bang = true }
+    -- vim.cmd.normal { "zt", bang = true }
 end
 
 function M.layouts.main:close()
@@ -218,6 +264,7 @@ function M.layouts.main:close()
 end
 
 function M.layouts.stacked:arrange(windows)
+    -- vim.notify("arranging stack")
     -- windows = [top (most recent) of stack, next, next, ..., bottom (oldest) of stack]
     local window = vim.api.nvim_get_current_win()
     windows = windows or self:get_windows()
@@ -299,7 +346,8 @@ function M.layouts.tiled:get_windows()
     return get_windows("forward")
 end
 
-function M.layouts.tiled:new(make)
+function M.layouts.tiled:new()
+    -- TODO how to restore view? when 1 -> restore, when 2 -> restore, for the stacked once, make the top behavior?
     local windows = self:get_windows()
     vim.cmd.split()
     local window = vim.api.nvim_get_current_win()
@@ -355,7 +403,12 @@ function M.layouts.dynamic:arrange(windows)
     else
         layout = "stacked"
     end
-    if windows == nil and current_dynamic_layout ~= layout then
+    -- TODO it doesnt work for nvim -o ... because we get called on the first file, then splits are applied, but we dont use the event
+    -- that was on purpose... should we try the event?
+    -- BufWinEnter, VimEnter is probably it, the Win* events could be useful
+    -- see SessionLoadPost maybe too
+    -- vim.notify("arranging for " .. vim.o.columns .. " columns -> " .. layout)
+    if not windows and current_dynamic_layout ~= layout then
         windows = M.layouts[current_dynamic_layout]:get_windows()
     end
     current_dynamic_layout = layout
