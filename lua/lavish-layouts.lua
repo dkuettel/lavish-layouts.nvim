@@ -7,12 +7,37 @@ local M = {}
 -- back to main, there is no data to really exactly restore the view you had
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
--- TODO the dynamic layout should be a table that configures the conditions
----@alias LayoutName "main" | "stacked" | "tiled" | "dynamic"
+---@alias LayoutName "main" | "stacked" | "dynamic"
 
--- TODO should type the any part here, classes?
----@type table<LayoutName, any>
-M.layouts = { main = {}, stacked = {}, tiled = {}, dynamic = {} }
+---@class MainLayout
+local MainLayout = {}
+
+---@return MainLayout
+function MainLayout.make()
+    return setmetatable({}, { __index = MainLayout })
+end
+
+---@class StackedLayout
+local StackedLayout = {}
+
+---@return StackedLayout
+function StackedLayout.make()
+    return setmetatable({}, { __index = StackedLayout })
+end
+
+---@class DynamicLayout
+---@field layout "main"|"stacked"
+local DynamicLayout = {}
+
+---@return DynamicLayout
+function DynamicLayout.make()
+    return setmetatable({ layout = "main" }, { __index = DynamicLayout })
+end
+
+---@alias Layout MainLayout|StackedLayout|DynamicLayout
+
+---@type table<LayoutName, Layout>
+M.layouts = { main = MainLayout.make(), stacked = StackedLayout.make(), dynamic = DynamicLayout.make() }
 
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
@@ -23,23 +48,31 @@ M.layouts = { main = {}, stacked = {}, tiled = {}, dynamic = {} }
 -- similar to VimResized to relayout in the right moments? or leave it to the user on his tab switch mappings?
 
 ---@param name? LayoutName
----@return any
+---@return Layout
 function get_layout(name)
-    if name == nil then
-        ---@type LayoutName
-        name = vim.g.Layout or "main"
+    if name then
+        return M.layouts[name] or M.layouts["main"]
     end
-    return M.layouts[name]
+    return M.layouts[vim.g.Layout] or M.layouts["main"]
 end
 
 function M.setup()
-    local bg0_h = "#f9f5d7"
     vim.opt.sessionoptions:append("globals") -- NOTE to restore the layout when re-loading sessions
+
     vim.g.Layout = vim.g.Layout or "main"
+
+    local bg0_h = "#f9f5d7"
     vim.api.nvim_set_hl(0, "NormalCreated", { bg = bg0_h })
+
     vim.api.nvim_create_user_command("Layout", function(args)
-        M.switch(M.layouts[args.fargs[1]])
+        local name = args.fargs[1]
+        if name == "main" or name == "stacked" or name == "dynamic" then
+            M.switch(name)
+        else
+            vim.notify("unknown layout: '" .. name .. "'")
+        end
     end, { nargs = 1, desc = "switch layout" })
+
     -- TODO if you :bd yourself, then layouts wont know, we could work with events, if really needed
     -- but i cant find a good event for that, plus events have a tendency to make layouts do double or triple work
     vim.api.nvim_create_autocmd({ "VimResized" }, {
@@ -131,10 +164,8 @@ local function get_windows(order)
         -- TODO hm also here we get way too many windows than what I actually see
         -- the layouting process seems robust to that? or is the filter later working it out?
         windows = vim.api.nvim_tabpage_list_wins(0)
-    elseif order == "backward" then
+    else -- order=="backward"
         windows = vim.fn.reverse(vim.api.nvim_tabpage_list_wins(0))
-    else
-        assert(false)
     end
     windows = vim.tbl_filter(function(window)
         local config = vim.api.nvim_win_get_config(window)
@@ -158,11 +189,10 @@ end
 --    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
 -- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
 ---@param windows? integer[] window handles in layout order: main, stack, stack, ...
-function M.layouts.main:arrange(windows)
+function MainLayout:arrange(windows)
     local focus = vim.api.nvim_get_current_win()
-    -- TODO emmylua doesnt understand self? and then the windows type is broken; hm no probably just because I didnt really make it a class yet; the type is any for M.layouts.main
-    ---@type integer[]
     windows = windows or self:get_windows() -- order: main, stack, stack, ...
+    ---@type vim.fn.winsaveview.ret?
     local view = nil
     if windows[1] then
         vim.api.nvim_win_call(windows[1], function()
@@ -199,12 +229,12 @@ function M.layouts.main:arrange(windows)
 end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
-function M.layouts.main:get_windows()
+function MainLayout.get_windows()
     return get_windows("forward")
 end
 
 -- TODO when running this, i see some flicker, can we hold drawing until all is done?
-function M.layouts.main:new()
+function MainLayout:new()
     local stack = self:get_windows()
     local current = vim.api.nvim_get_current_win()
     local view = nil
@@ -222,7 +252,7 @@ function M.layouts.main:new()
     end
 end
 
-function M.layouts.main:previous()
+function MainLayout.previous()
     -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
     -- local focus = vim.api.nvim_get_current_win()
     -- local windows = vim.api.nvim_tabpage_list_wins(0)
@@ -233,7 +263,7 @@ function M.layouts.main:previous()
 end
 
 -- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
-function M.layouts.main:next()
+function MainLayout.next()
     -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
     -- local focus = vim.api.nvim_get_current_win()
     -- local windows = vim.api.nvim_tabpage_list_wins(0)
@@ -244,7 +274,7 @@ function M.layouts.main:next()
 end
 
 ---@param window? integer
-function M.layouts.main:focus(window)
+function MainLayout:focus(window)
     local focus = window or vim.api.nvim_get_current_win()
     local windows = self:get_windows()
     if focus == windows[1] then
@@ -259,13 +289,13 @@ function M.layouts.main:focus(window)
     vim.cmd.normal { "zt", bang = true }
 end
 
-function M.layouts.main:close()
+function MainLayout:close()
     close_window_or_clear()
     self:arrange()
 end
 
-function M.layouts.stacked:arrange(windows)
-    -- vim.notify("arranging stack")
+---@param windows? integer[]
+function StackedLayout:arrange(windows)
     -- windows = [top (most recent) of stack, next, next, ..., bottom (oldest) of stack]
     local window = vim.api.nvim_get_current_win()
     windows = windows or self:get_windows()
@@ -277,11 +307,11 @@ function M.layouts.stacked:arrange(windows)
     vim.cmd.wincmd("_")
 end
 
-function M.layouts.stacked:get_windows()
+function StackedLayout.get_windows()
     return get_windows("backward")
 end
 
-function M.layouts.stacked:new()
+function StackedLayout:new()
     local windows = self:get_windows()
     local view = vim.fn.winsaveview()
     vim.cmd.split()
@@ -291,17 +321,17 @@ function M.layouts.stacked:new()
     vim.fn.winrestview(view) -- this should make the forked view exactly the same
 end
 
-function M.layouts.stacked:previous()
+function StackedLayout.previous()
     vim.cmd.wincmd("k")
     vim.cmd.wincmd("_")
 end
 
-function M.layouts.stacked:next()
+function StackedLayout.next()
     vim.cmd.wincmd("j")
     vim.cmd.wincmd("_")
 end
 
-function M.layouts.stacked:focus(window)
+function StackedLayout:focus(window)
     local focus = window or vim.api.nvim_get_current_win()
     local windows = self:get_windows()
     if focus == windows[1] then
@@ -316,130 +346,61 @@ function M.layouts.stacked:focus(window)
     vim.api.nvim_set_current_win(focus)
 end
 
-function M.layouts.stacked:close()
+function StackedLayout:close()
     close_window_or_clear()
     self:arrange()
 end
-
-function M.layouts.tiled:arrange(windows)
-    -- windows = [main, side, stack, stack, ....]
-    local window = vim.api.nvim_get_current_win()
-    windows = windows or self:get_windows()
-    for i, w in ipairs(windows) do
-        if i == 1 then
-            vim.api.nvim_set_current_win(w)
-            vim.cmd.wincmd("L")
-        elseif i == 3 then
-            vim.api.nvim_set_current_win(w)
-            vim.cmd.wincmd("J")
-        else
-            vim.api.nvim_win_set_config(w, { win = windows[i - 1], vertical = true, split = "right" })
-        end
-    end
-    vim.cmd.wincmd("=")
-    if #windows > 2 then
-        vim.cmd.wincmd("5-")
-    end
-    vim.api.nvim_set_current_win(window)
-end
-
-function M.layouts.tiled:get_windows()
-    return get_windows("forward")
-end
-
-function M.layouts.tiled:new()
-    -- TODO how to restore view? when 1 -> restore, when 2 -> restore, for the stacked once, make the top behavior?
-    local windows = self:get_windows()
-    vim.cmd.split()
-    local window = vim.api.nvim_get_current_win()
-    windows = { window, unpack(windows) }
-    self:arrange(windows)
-end
-
-function M.layouts.tiled:previous()
-    local focus = vim.api.nvim_get_current_win()
-    local windows = vim.api.nvim_tabpage_list_wins(0)
-    if focus == windows[1] then
-        return
-    end
-    vim.cmd.wincmd("W")
-end
-
-function M.layouts.tiled:next()
-    local focus = vim.api.nvim_get_current_win()
-    local windows = vim.api.nvim_tabpage_list_wins(0)
-    if focus == windows[#windows] then
-        return
-    end
-    vim.cmd.wincmd("w")
-end
-
-function M.layouts.tiled:focus(window)
-    local focus = window or vim.api.nvim_get_current_win()
-    local windows = self:get_windows()
-    if focus == windows[1] then
-        focus = windows[2] or focus
-    end
-    windows = vim.tbl_filter(function(v)
-        return v ~= focus
-    end, windows)
-    windows = { focus, unpack(windows) }
-    vim.api.nvim_set_current_win(focus)
-    self:arrange(windows)
-    vim.api.nvim_set_current_win(focus)
-end
-
-function M.layouts.tiled:close()
-    close_window_or_clear()
-    self:arrange()
-end
-
-local current_dynamic_layout = nil
 
 ---@param windows? integer[] window handles in layout order
-function M.layouts.dynamic:arrange(windows)
+function DynamicLayout:arrange(windows)
+    ---@type LayoutName
     local layout
     if vim.o.columns > 190 then
         layout = "main"
     else
         layout = "stacked"
     end
+
     vim.g.LayoutDesc = "dynamic/" .. layout
+
     -- TODO it doesnt work for nvim -o ... because we get called on the first file, then splits are applied, but we dont use the event
     -- that was on purpose... should we try the event?
     -- BufWinEnter, VimEnter is probably it, the Win* events could be useful
     -- see SessionLoadPost maybe too
     -- vim.notify("arranging for " .. vim.o.columns .. " columns -> " .. layout)
-    if not windows and current_dynamic_layout ~= layout then
-        windows = M.layouts[current_dynamic_layout]:get_windows()
+
+    if not windows and self.layout ~= layout then
+        windows = M.layouts[self.layout]:get_windows()
     end
-    current_dynamic_layout = layout
-    M.layouts[current_dynamic_layout]:arrange(windows)
+
+    self.layout = layout
+
+    M.layouts[layout]:arrange(windows)
 end
 
 ---@return integer[] windows window handles in layout order
-function M.layouts.dynamic:get_windows()
-    return M.layouts[current_dynamic_layout]:get_windows()
+function DynamicLayout:get_windows()
+    return M.layouts[self.layout]:get_windows()
 end
 
-function M.layouts.dynamic:new()
-    M.layouts[current_dynamic_layout]:new()
+function DynamicLayout:new()
+    M.layouts[self.layout]:new()
 end
 
-function M.layouts.dynamic:previous()
-    M.layouts[current_dynamic_layout]:previous()
+function DynamicLayout:previous()
+    M.layouts[self.layout]:previous()
 end
 
-function M.layouts.dynamic:next()
-    M.layouts[current_dynamic_layout]:next()
+function DynamicLayout:next()
+    M.layouts[self.layout]:next()
 end
 
-function M.layouts.dynamic:focus(window)
-    M.layouts[current_dynamic_layout]:focus(window)
+function DynamicLayout:focus(window)
+    M.layouts[self.layout]:focus(window)
 end
 
-function M.layouts.dynamic:close()
-    M.layouts[current_dynamic_layout]:close()
+function DynamicLayout:close()
+    M.layouts[self.layout]:close()
 end
 
 function M.switch_dynamic()
@@ -454,46 +415,10 @@ function M.switch_stacked()
     M.switch("stacked")
 end
 
-function M.switch_tiled()
-    M.switch("tiled")
-end
-
 --- for the current window and rearrange
 --- this makes a best effort to have the forked view at exactly the same viewport
 function M.new_from_split()
     M.new()
-end
-
--- TODO but how to make it when the picker is not a file? ah wait always files, but the line?
--- TODO remove, right?
-function M.new_from_picker(picker, opts)
-    local success, _ = pcall(require, "telescope")
-    if not success then
-        vim.cmd.echomsg([["no telescope"]])
-        return
-    end
-    if type(picker) == "string" then
-        picker = require("telescope.builtin")[picker]
-    end
-    opts = opts or {}
-    local actions = require("telescope.actions")
-    local state = require("telescope.actions.state")
-    opts = vim.tbl_deep_extend("force", opts, {
-        -- TODO see again, we just want to overwrite the default action, whatever it is
-        attach_mappings = function(_, map)
-            map("i", "<enter>", function(prompt_bufnr)
-                local selection = state.get_selected_entry()
-                actions.close(prompt_bufnr)
-                local function make()
-                    -- TODO sometimes we want to jump to a line too
-                    vim.cmd.split(selection[1])
-                end
-                M.new(make)
-            end)
-            return true
-        end,
-    })
-    picker(opts)
 end
 
 return M
