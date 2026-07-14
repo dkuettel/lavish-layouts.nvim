@@ -157,12 +157,23 @@ function M.layouts.main:get_windows()
     return get_windows("forward")
 end
 
+-- TODO when running this, i see some flicker, can we hold drawing until all is done?
 function M.layouts.main:new()
     local stack = self:get_windows()
+    local current = vim.api.nvim_get_current_win()
+    local view = nil
+    if current == stack[1] then
+        view = vim.fn.winsaveview()
+    end
     vim.cmd.split()
     local main = vim.api.nvim_get_current_win()
     local windows = { main, unpack(stack) }
     self:arrange(windows)
+    if view then
+        vim.fn.winrestview(view)
+    else
+        vim.cmd.normal { "zz", bang = true }
+    end
 end
 
 function M.layouts.main:previous()
@@ -221,12 +232,14 @@ function M.layouts.stacked:get_windows()
     return get_windows("backward")
 end
 
-function M.layouts.stacked:new(make)
+function M.layouts.stacked:new()
     local windows = self:get_windows()
+    local view = vim.fn.winsaveview()
     vim.cmd.split()
     local window = vim.api.nvim_get_current_win()
     windows = { window, unpack(windows) }
     self:arrange(windows)
+    vim.fn.winrestview(view) -- this should make the forked view exactly the same
 end
 
 function M.layouts.stacked:previous()
@@ -389,6 +402,8 @@ function M.switch_tiled()
     M.switch("tiled")
 end
 
+--- for the current window and rearrange
+--- this makes a best effort to have the forked view at exactly the same viewport
 function M.new_from_split()
     M.new()
 end
