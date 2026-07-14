@@ -218,7 +218,7 @@ function M.layouts.main:new()
     if view then
         vim.fn.winrestview(view)
     else
-        vim.cmd.normal { "zz", bang = true }
+        vim.cmd.normal { "zt", bang = true }
     end
 end
 
@@ -256,8 +256,7 @@ function M.layouts.main:focus(window)
     windows = { focus, unpack(windows) }
     vim.api.nvim_set_current_win(focus)
     self:arrange(windows)
-    vim.cmd.normal { "zz", bang = true }
-    -- vim.cmd.normal { "zt", bang = true }
+    vim.cmd.normal { "zt", bang = true }
 end
 
 function M.layouts.main:close()
