@@ -19,14 +19,24 @@ local M = {}
 function M.arrange(windows)
     local focus = vim.api.nvim_get_current_win()
     windows = windows or M.get_windows() -- order: main, stack, stack, ...
+
     ---@type vim.fn.winsaveview.ret?
-    local view = nil
+    local view1 = nil
     if windows[1] then
         vim.api.nvim_win_call(windows[1], function()
-            view = vim.fn.winsaveview()
+            view1 = vim.fn.winsaveview()
         end)
     end
-    -- vim.notify("arranging main for " .. vim.inspect(windows))
+
+    ---@type vim.fn.winsaveview.ret?
+    local view2 = nil
+    if windows[2] then
+        vim.api.nvim_win_call(windows[2], function()
+            view2 = vim.fn.winsaveview()
+        end)
+    end
+
+    -- arrange
     for i, w in ipairs(windows) do
         if i > 1 then
             vim.api.nvim_win_call(w, function()
@@ -37,21 +47,37 @@ function M.arrange(windows)
     if windows[1] then
         vim.api.nvim_win_call(windows[1], function()
             vim.cmd.wincmd("H")
-            if view then
-                vim.fn.winrestview(view)
-            end
+        end)
+    end
+
+    -- restore main view
+    if windows[1] and view1 then
+        vim.api.nvim_win_call(windows[1], function()
+            vim.fn.winrestview(view1)
             vim.wo.scrolloff = -1
         end)
     end
-    -- TODO actually when just two windows, then we want to restore views, starting with 3, we want the top-policy
-    for i, w in ipairs(windows) do
-        if i > 1 then
-            vim.api.nvim_win_call(w, function()
-                vim.wo.scrolloff = 0
-                vim.cmd.normal { "zt", bang = true }
-            end)
+
+    -- restore stack view, if just one
+    if #windows == 2 and windows[2] and view2 then
+        vim.api.nvim_win_call(windows[2], function()
+            vim.fn.winrestview(view2)
+        end)
+    end
+
+    -- position stack views, if more than one
+    if #windows >= 3 then
+        for i, w in ipairs(windows) do
+            if i > 1 then
+                vim.api.nvim_win_call(w, function()
+                    vim.wo.scrolloff = 0
+                    vim.cmd.normal { "zt", bang = true }
+                    -- TODO cursorline to indicate? or we just know its always the top line?
+                end)
+            end
         end
     end
+
     vim.api.nvim_set_current_win(focus)
 end
 
@@ -113,7 +139,9 @@ function M.focus(window)
     windows = { focus, unpack(windows) }
     vim.api.nvim_set_current_win(focus)
     M.arrange(windows)
-    vim.cmd.normal { "zt", bang = true }
+    if #windows > 2 then
+        vim.cmd.normal { "zt", bang = true }
+    end
 end
 
 function M.close()
