@@ -1,16 +1,14 @@
 local M = {}
 
----@class DynamicLayout
----@field layout "main"|"stacked"
-M.DynamicLayout = {}
+---@type "main"|"stacked"
+local current = "main"
 
----@return DynamicLayout
-function M.DynamicLayout.make()
-    return setmetatable({ layout = "main" }, { __index = M.DynamicLayout })
+local function get()
+    return require("lavish-layouts.misc").get_layout(current)
 end
 
 ---@param windows? integer[] window handles in layout order
-function M.DynamicLayout:arrange(windows)
+function M.arrange(windows)
     ---@type LayoutName
     local layout
     if vim.o.columns > 190 then
@@ -27,38 +25,38 @@ function M.DynamicLayout:arrange(windows)
     -- see SessionLoadPost maybe too
     -- vim.notify("arranging for " .. vim.o.columns .. " columns -> " .. layout)
 
-    if not windows and self.layout ~= layout then
-        windows = require("lavish-layouts").layouts[self.layout]:get_windows()
+    if not windows and M.layout ~= layout then
+        windows = get().get_windows()
     end
 
-    self.layout = layout
+    M.layout = layout
 
-    require("lavish-layouts").layouts[layout]:arrange(windows)
+    get().arrange(windows)
 end
 
 ---@return integer[] windows window handles in layout order
-function M.DynamicLayout:get_windows()
-    return require("lavish-layouts").layouts[self.layout]:get_windows()
+function M.get_windows()
+    return get().get_windows()
 end
 
-function M.DynamicLayout:new()
-    require("lavish-layouts").layouts[self.layout]:new()
+function M.new()
+    get().new()
 end
 
-function M.DynamicLayout:previous()
-    require("lavish-layouts").layouts[self.layout]:previous()
+function M.previous()
+    get().previous()
 end
 
-function M.DynamicLayout:next()
-    require("lavish-layouts").layouts[self.layout]:next()
+function M.next()
+    get().next()
 end
 
-function M.DynamicLayout:focus(window)
-    require("lavish-layouts").layouts[self.layout]:focus(window)
+function M.focus(window)
+    get().focus(window)
 end
 
-function M.DynamicLayout:close()
-    require("lavish-layouts").layouts[self.layout]:close()
+function M.close()
+    get().close()
 end
 
 return M

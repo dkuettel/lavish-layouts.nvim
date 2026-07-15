@@ -9,15 +9,6 @@ local M = {}
 
 ---@alias LayoutName "main" | "stacked" | "dynamic"
 
-local MainLayout = require("lavish-layouts.layouts.main").MainLayout
-local StackedLayout = require("lavish-layouts.layouts.stacked").StackedLayout
-local DynamicLayout = require("lavish-layouts.layouts.dynamic").DynamicLayout
-
----@alias Layout MainLayout|StackedLayout|DynamicLayout
-
----@type table<LayoutName, Layout>
-M.layouts = { main = MainLayout.make(), stacked = StackedLayout.make(), dynamic = DynamicLayout.make() }
-
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
 -- (we also then need to make sure sessions save it)
@@ -26,13 +17,10 @@ M.layouts = { main = MainLayout.make(), stacked = StackedLayout.make(), dynamic 
 -- TODO now with a global layout, we should probably use events like TabEnter TabLeave TabNew TabNewEntered TabClosed
 -- similar to VimResized to relayout in the right moments? or leave it to the user on his tab switch mappings?
 
----@param name? LayoutName
----@return Layout
-function get_layout(name)
-    if name then
-        return M.layouts[name] or M.layouts["main"]
-    end
-    return M.layouts[vim.g.Layout] or M.layouts["main"]
+local misc = require("lavish-layouts.misc")
+
+function get_active_layout()
+    return misc.maybe_get_layout(vim.g.Layout) or misc.get_layout("main")
 end
 
 function M.setup()
@@ -57,14 +45,14 @@ function M.setup()
     vim.api.nvim_create_autocmd({ "VimResized" }, {
         desc = "lavish-layouts",
         callback = function()
-            get_layout():arrange()
+            get_active_layout().arrange()
         end,
         nested = true,
     })
 
     vim.api.nvim_create_autocmd({ "VimEnter" }, {
         callback = function()
-            get_layout():arrange()
+            get_active_layout().arrange()
         end,
         once = true,
     })
@@ -72,7 +60,7 @@ function M.setup()
     -- TODO to check if things bounce around and are not idempotent
     function again()
         vim.notify("bounce")
-        get_layout():arrange()
+        get_active_layout().arrange()
         vim.defer_fn(again, 1000)
     end
     vim.defer_fn(again, 1000)
@@ -81,15 +69,15 @@ end
 -- TODO when is a session loaded? after we set the default with this or before?
 ---@param name LayoutName
 function M.switch(name)
-    local windows = get_layout():get_windows()
+    local windows = get_active_layout().get_windows()
     vim.g.Layout = name
     vim.g.LayoutDesc = name
-    get_layout():arrange(windows)
+    get_active_layout().arrange(windows)
 end
 
 ---@param blink? boolean
 function M.new(blink)
-    get_layout():new()
+    get_active_layout().new()
     if blink then
         vim.wo.winhighlight = "Normal:NormalCreated"
         local function reset()
@@ -101,20 +89,20 @@ function M.new(blink)
 end
 
 function M.next()
-    get_layout():next()
+    get_active_layout().next()
 end
 
 function M.previous()
-    get_layout():previous()
+    get_active_layout().previous()
 end
 
 ---@param window? integer window to focus on (defaults to current), and if already focused, it will flip with the secondary focused window
 function M.focus(window)
-    get_layout():focus(window)
+    get_active_layout().focus(window)
 end
 
 function M.close()
-    get_layout():close()
+    get_active_layout().close()
 end
 
 --close the window and delete the buffer, similar to :bd
@@ -124,7 +112,7 @@ function M.close_and_delete()
     if vim.api.nvim_buf_get_name(0) == "" then
         vim.cmd([[:e .]])
     end
-    get_layout():arrange()
+    get_active_layout().arrange()
 end
 
 function M.close_window_or_clear()

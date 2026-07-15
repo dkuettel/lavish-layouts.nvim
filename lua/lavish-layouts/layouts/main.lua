@@ -1,13 +1,5 @@
 local M = {}
 
----@class MainLayout
-M.MainLayout = {}
-
----@return MainLayout
-function M.MainLayout.make()
-    return setmetatable({}, { __index = M.MainLayout })
-end
-
 -- TODO arranges seem to change views somehow, especially after a pair of wf wf, or after w space space and close, things move, unexpected
 -- when a focused window moves to the stack, its smaller, so its not clear there what to show, you cant show the same
 -- showing around the cursor makes most sense? that seems to have been the important part?
@@ -23,9 +15,9 @@ end
 --    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
 -- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
 ---@param windows? integer[] window handles in layout order: main, stack, stack, ...
-function M.MainLayout:arrange(windows)
+function M.arrange(windows)
     local focus = vim.api.nvim_get_current_win()
-    windows = windows or self:get_windows() -- order: main, stack, stack, ...
+    windows = windows or M.get_windows() -- order: main, stack, stack, ...
     ---@type vim.fn.winsaveview.ret?
     local view = nil
     if windows[1] then
@@ -63,13 +55,13 @@ function M.MainLayout:arrange(windows)
 end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
-function M.MainLayout.get_windows()
+function M.get_windows()
     return require("lavish-layouts").get_windows("forward")
 end
 
 -- TODO when running this, i see some flicker, can we hold drawing until all is done?
-function M.MainLayout:new()
-    local stack = self:get_windows()
+function M.new()
+    local stack = M.get_windows()
     local current = vim.api.nvim_get_current_win()
     local view = nil
     if current == stack[1] then
@@ -78,7 +70,7 @@ function M.MainLayout:new()
     vim.cmd.split()
     local main = vim.api.nvim_get_current_win()
     local windows = { main, unpack(stack) }
-    self:arrange(windows)
+    M.arrange(windows)
     if view then
         vim.fn.winrestview(view)
     else
@@ -86,7 +78,7 @@ function M.MainLayout:new()
     end
 end
 
-function M.MainLayout.previous()
+function M.previous()
     -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
     -- local focus = vim.api.nvim_get_current_win()
     -- local windows = vim.api.nvim_tabpage_list_wins(0)
@@ -97,7 +89,7 @@ function M.MainLayout.previous()
 end
 
 -- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
-function M.MainLayout.next()
+function M.next()
     -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
     -- local focus = vim.api.nvim_get_current_win()
     -- local windows = vim.api.nvim_tabpage_list_wins(0)
@@ -108,9 +100,9 @@ function M.MainLayout.next()
 end
 
 ---@param window? integer
-function M.MainLayout:focus(window)
+function M.focus(window)
     local focus = window or vim.api.nvim_get_current_win()
-    local windows = self:get_windows()
+    local windows = M.get_windows()
     if focus == windows[1] then
         focus = windows[2] or focus
     end
@@ -119,13 +111,13 @@ function M.MainLayout:focus(window)
     end, windows)
     windows = { focus, unpack(windows) }
     vim.api.nvim_set_current_win(focus)
-    self:arrange(windows)
+    M.arrange(windows)
     vim.cmd.normal { "zt", bang = true }
 end
 
-function M.MainLayout:close()
+function M.close()
     require("lavish-layouts").close_window_or_clear()
-    self:arrange()
+    M.arrange()
 end
 
 return M
