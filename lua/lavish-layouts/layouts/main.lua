@@ -1,3 +1,4 @@
+---@class MainLayout
 local M = {}
 
 -- TODO arranges seem to change views somehow, especially after a pair of wf wf, or after w space space and close, things move, unexpected

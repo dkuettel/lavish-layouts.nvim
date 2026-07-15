@@ -6,15 +6,18 @@ local layouts = {
     dynamic = require("lavish-layouts.layouts.dynamic"),
 }
 
--- TODO can i type the module return? or the interface?
 ---@param name? string
+---@return Layout?
 function M.maybe_get_layout(name)
     return layouts[name]
 end
 
----@param name "main"|"stacked"|"dynamic"
+---@param name LayoutName
+---@return Layout
 function M.get_layout(name)
-    return assert(M.maybe_get_layout(name))
+    ---@diagnostic disable: unnecessary-assert
+    local l = assert(M.maybe_get_layout(name))
+    return l
 end
 
 return M

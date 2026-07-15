@@ -7,7 +7,9 @@ local M = {}
 -- back to main, there is no data to really exactly restore the view you had
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
+---@alias ConcreteLayoutName "main" | "stacked"
 ---@alias LayoutName "main" | "stacked" | "dynamic"
+---@alias Layout MainLayout | StackedLayout | DynamicLayout
 
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
@@ -19,7 +21,8 @@ local M = {}
 
 local misc = require("lavish-layouts.misc")
 
-function get_active_layout()
+---@return Layout
+function get()
     return misc.maybe_get_layout(vim.g.Layout) or misc.get_layout("main")
 end
 
@@ -45,14 +48,14 @@ function M.setup()
     vim.api.nvim_create_autocmd({ "VimResized" }, {
         desc = "lavish-layouts",
         callback = function()
-            get_active_layout().arrange()
+            get().arrange()
         end,
         nested = true,
     })
 
     vim.api.nvim_create_autocmd({ "VimEnter" }, {
         callback = function()
-            get_active_layout().arrange()
+            get().arrange()
         end,
         once = true,
     })
@@ -60,7 +63,7 @@ function M.setup()
     -- TODO to check if things bounce around and are not idempotent
     function again()
         vim.notify("bounce")
-        get_active_layout().arrange()
+        get().arrange()
         vim.defer_fn(again, 1000)
     end
     vim.defer_fn(again, 1000)
@@ -69,15 +72,15 @@ end
 -- TODO when is a session loaded? after we set the default with this or before?
 ---@param name LayoutName
 function M.switch(name)
-    local windows = get_active_layout().get_windows()
+    local windows = get().get_windows()
     vim.g.Layout = name
     vim.g.LayoutDesc = name
-    get_active_layout().arrange(windows)
+    get().arrange(windows)
 end
 
 ---@param blink? boolean
 function M.new(blink)
-    get_active_layout().new()
+    get().new()
     if blink then
         vim.wo.winhighlight = "Normal:NormalCreated"
         local function reset()
@@ -89,20 +92,20 @@ function M.new(blink)
 end
 
 function M.next()
-    get_active_layout().next()
+    get().next()
 end
 
 function M.previous()
-    get_active_layout().previous()
+    get().previous()
 end
 
 ---@param window? integer window to focus on (defaults to current), and if already focused, it will flip with the secondary focused window
 function M.focus(window)
-    get_active_layout().focus(window)
+    get().focus(window)
 end
 
 function M.close()
-    get_active_layout().close()
+    get().close()
 end
 
 --close the window and delete the buffer, similar to :bd
@@ -112,7 +115,7 @@ function M.close_and_delete()
     if vim.api.nvim_buf_get_name(0) == "" then
         vim.cmd([[:e .]])
     end
-    get_active_layout().arrange()
+    get().arrange()
 end
 
 function M.close_window_or_clear()

@@ -1,3 +1,4 @@
+---@class StackedLayout
 local M = {}
 
 ---@param windows? integer[]

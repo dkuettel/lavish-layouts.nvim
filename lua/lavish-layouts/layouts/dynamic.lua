@@ -1,3 +1,4 @@
+---@class DynamicLayout
 local M = {}
 
 ---@type "main"|"stacked"
