@@ -15,7 +15,7 @@ function M.arrange(windows)
 end
 
 function M.get_windows()
-    return require("lavish-layouts").get_windows("backward")
+    return require("lavish-layouts.misc").get_windows("backward")
 end
 
 function M.new()

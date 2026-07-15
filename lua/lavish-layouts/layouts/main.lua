@@ -83,7 +83,7 @@ end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
 function M.get_windows()
-    return require("lavish-layouts").get_windows("forward")
+    return require("lavish-layouts.misc").get_windows("forward")
 end
 
 -- TODO when running this, i see some flicker, can we hold drawing until all is done?
