@@ -1,0 +1,131 @@
+local M = {}
+
+---@class MainLayout
+M.MainLayout = {}
+
+---@return MainLayout
+function M.MainLayout.make()
+    return setmetatable({}, { __index = M.MainLayout })
+end
+
+-- TODO arranges seem to change views somehow, especially after a pair of wf wf, or after w space space and close, things move, unexpected
+-- when a focused window moves to the stack, its smaller, so its not clear there what to show, you cant show the same
+-- showing around the cursor makes most sense? that seems to have been the important part?
+-- but then when that window becomes big again, what to show and at what view exactly? the info is lost
+-- very clear, and maybe best testet in stacked layout, since they make the stacked view just one row in size
+-- vim has some view safe functions, every layout does the logic for the important windows somehow? or for those windows with the same geometry?
+-- but even so, even the main window can change, how does vim handle it natively in these cases? hm its quite proportional, even after squeezing, how can it keep the proportion then?
+-- no, it seems to be off a bit when squeezing much, with large font
+-- maybe the scroll-off is what breaks it? what can we expect from stacked, when its just one row anyway?
+-- vim.fn.winsave view and winrestview works well when no geom changes, not sure how gracefully it handles it when you apply it to a differen size later
+-- hm second time it messes up other windows too (no more stack sandwiches); ah no that is just the command buffer view that has this problem, another thing to solve
+-- vim.fn.winrestview works reasonable when resizing and applying again, maybe thats it? we keep the original winsave, until you act on a window? and apply it everytime?
+--    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
+-- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
+---@param windows? integer[] window handles in layout order: main, stack, stack, ...
+function M.MainLayout:arrange(windows)
+    local focus = vim.api.nvim_get_current_win()
+    windows = windows or self:get_windows() -- order: main, stack, stack, ...
+    ---@type vim.fn.winsaveview.ret?
+    local view = nil
+    if windows[1] then
+        vim.api.nvim_win_call(windows[1], function()
+            view = vim.fn.winsaveview()
+        end)
+    end
+    -- vim.notify("arranging main for " .. vim.inspect(windows))
+    for i, w in ipairs(windows) do
+        if i > 1 then
+            vim.api.nvim_win_call(w, function()
+                vim.cmd.wincmd("J")
+            end)
+        end
+    end
+    if windows[1] then
+        vim.api.nvim_win_call(windows[1], function()
+            vim.cmd.wincmd("H")
+            if view then
+                vim.fn.winrestview(view)
+            end
+            vim.wo.scrolloff = -1
+        end)
+    end
+    -- TODO actually when just two windows, then we want to restore views, starting with 3, we want the top-policy
+    for i, w in ipairs(windows) do
+        if i > 1 then
+            vim.api.nvim_win_call(w, function()
+                vim.wo.scrolloff = 0
+                vim.cmd.normal { "zt", bang = true }
+            end)
+        end
+    end
+    vim.api.nvim_set_current_win(focus)
+end
+
+---@return integer[] windows window handles in layout order: main, stack, stack, ...
+function M.MainLayout.get_windows()
+    return require("lavish-layouts").get_windows("forward")
+end
+
+-- TODO when running this, i see some flicker, can we hold drawing until all is done?
+function M.MainLayout:new()
+    local stack = self:get_windows()
+    local current = vim.api.nvim_get_current_win()
+    local view = nil
+    if current == stack[1] then
+        view = vim.fn.winsaveview()
+    end
+    vim.cmd.split()
+    local main = vim.api.nvim_get_current_win()
+    local windows = { main, unpack(stack) }
+    self:arrange(windows)
+    if view then
+        vim.fn.winrestview(view)
+    else
+        vim.cmd.normal { "zt", bang = true }
+    end
+end
+
+function M.MainLayout.previous()
+    -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
+    -- local focus = vim.api.nvim_get_current_win()
+    -- local windows = vim.api.nvim_tabpage_list_wins(0)
+    -- if focus == windows[1] then
+    --     return
+    -- end
+    vim.cmd.wincmd("W")
+end
+
+-- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
+function M.MainLayout.next()
+    -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
+    -- local focus = vim.api.nvim_get_current_win()
+    -- local windows = vim.api.nvim_tabpage_list_wins(0)
+    -- if focus == windows[#windows] then
+    --     return
+    -- end
+    vim.cmd.wincmd("w")
+end
+
+---@param window? integer
+function M.MainLayout:focus(window)
+    local focus = window or vim.api.nvim_get_current_win()
+    local windows = self:get_windows()
+    if focus == windows[1] then
+        focus = windows[2] or focus
+    end
+    windows = vim.tbl_filter(function(v)
+        return v ~= focus
+    end, windows)
+    windows = { focus, unpack(windows) }
+    vim.api.nvim_set_current_win(focus)
+    self:arrange(windows)
+    vim.cmd.normal { "zt", bang = true }
+end
+
+function M.MainLayout:close()
+    require("lavish-layouts").close_window_or_clear()
+    self:arrange()
+end
+
+return M
