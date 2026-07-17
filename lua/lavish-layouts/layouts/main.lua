@@ -69,6 +69,7 @@ function M.arrange(windows)
         for i, w in ipairs(windows) do
             if i > 1 then
                 vim.api.nvim_win_call(w, function()
+                    -- TODO when switching layouts, this can get forgotten, and stay on 0
                     vim.wo.scrolloff = 0
                     vim.cmd.normal { "zt", bang = true }
                     -- TODO cursorline to indicate? or we just know its always the top line?
