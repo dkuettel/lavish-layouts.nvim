@@ -17,7 +17,6 @@ local M = {}
 -- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
 ---@param windows? integer[] window handles in layout order: main, stack, stack, ...
 function M.arrange(windows)
-    local focus = vim.api.nvim_get_current_win()
     windows = windows or M.get_windows() -- order: main, stack, stack, ...
 
     ---@type vim.fn.winsaveview.ret?
@@ -77,8 +76,6 @@ function M.arrange(windows)
             end
         end
     end
-
-    vim.api.nvim_set_current_win(focus)
 end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
