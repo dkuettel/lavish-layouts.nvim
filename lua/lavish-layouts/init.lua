@@ -61,12 +61,12 @@ function M.setup()
     })
 
     -- TODO to check if things bounce around and are not idempotent
-    function again()
-        vim.notify("bounce")
-        get().arrange()
-        vim.defer_fn(again, 1000)
-    end
-    vim.defer_fn(again, 1000)
+    -- function again()
+    --     vim.notify("bounce")
+    --     get().arrange()
+    --     vim.defer_fn(again, 1000)
+    -- end
+    -- vim.defer_fn(again, 1000)
 end
 
 -- TODO when is a session loaded? after we set the default with this or before?
