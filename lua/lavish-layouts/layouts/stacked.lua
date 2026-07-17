@@ -3,15 +3,22 @@ local M = {}
 
 ---@param windows? integer[]
 function M.arrange(windows)
+    local view = vim.fn.winsaveview()
+
     -- windows = [top (most recent) of stack, next, next, ..., bottom (oldest) of stack]
-    local window = vim.api.nvim_get_current_win()
     windows = windows or M.get_windows()
+
+    -- stack windows so that oldest is the top most and newest is the bottom most
     for _, w in ipairs(windows) do
-        vim.api.nvim_set_current_win(w)
-        vim.cmd.wincmd("K")
+        vim.api.nvim_win_call(w, function()
+            vim.cmd.wincmd("K")
+        end)
     end
-    vim.api.nvim_set_current_win(window)
+
+    -- make the current one use all the space, the others are squeezed
     vim.cmd.wincmd("_")
+
+    vim.fn.winrestview(view)
 end
 
 function M.get_windows()
@@ -29,13 +36,19 @@ function M.new()
 end
 
 function M.previous()
+    -- TODO we want them to open right away, correct? should they restore the previous full view? no they are centered, or just top?
+    -- for now I dont try to remember the full view geometry, and just do zt uniformly
     vim.cmd.wincmd("k")
     vim.cmd.wincmd("_")
+    vim.wo.scrolloff = -1
+    vim.cmd.normal { "zt", bang = true }
 end
 
 function M.next()
     vim.cmd.wincmd("j")
     vim.cmd.wincmd("_")
+    vim.wo.scrolloff = -1
+    vim.cmd.normal { "zt", bang = true }
 end
 
 function M.focus(window)
