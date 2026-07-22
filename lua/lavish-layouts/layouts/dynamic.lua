@@ -26,11 +26,11 @@ function M.arrange(windows)
     -- see SessionLoadPost maybe too
     -- vim.notify("arranging for " .. vim.o.columns .. " columns -> " .. layout)
 
-    if not windows and M.layout ~= layout then
+    if not windows and current ~= layout then
         windows = get().get_windows()
     end
 
-    M.layout = layout
+    current = layout
 
     get().arrange(windows)
 end
