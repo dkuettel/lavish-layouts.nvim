@@ -99,7 +99,10 @@ function M.new()
     if view then
         vim.fn.winrestview(view)
     else
+        local h = vim.api.nvim_win_get_height(0)
+        vim.wo.scrolloff = math.floor(h / 3)
         vim.cmd.normal { "zt", bang = true }
+        vim.wo.scrolloff = -1
     end
 end
 
@@ -138,7 +141,10 @@ function M.focus(window)
     vim.api.nvim_set_current_win(focus)
     M.arrange(windows)
     if #windows > 2 then
+        local h = vim.api.nvim_win_get_height(0)
+        vim.wo.scrolloff = math.floor(h / 3)
         vim.cmd.normal { "zt", bang = true }
+        vim.wo.scrolloff = -1
     end
 end
 
