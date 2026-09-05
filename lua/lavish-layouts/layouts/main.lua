@@ -39,6 +39,7 @@ function M.arrange(windows)
     for i, w in ipairs(windows) do
         if i > 1 then
             vim.api.nvim_win_call(w, function()
+                -- TODO this can fail when there is not a enough space and then things become jumbled up
                 vim.cmd.wincmd("J")
             end)
         end
