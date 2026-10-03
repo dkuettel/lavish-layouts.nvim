@@ -1,3 +1,5 @@
+---@namespace lavish-layouts
+
 local M = {}
 
 -- NOTE when a window goes to the stack or "background", it usually gets smaller

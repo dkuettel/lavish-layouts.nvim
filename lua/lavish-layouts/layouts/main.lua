@@ -1,3 +1,5 @@
+---@namespace lavish-layouts
+
 ---@class MainLayout
 local M = {}
 
@@ -10,7 +12,7 @@ local M = {}
 -- but even so, even the main window can change, how does vim handle it natively in these cases? hm its quite proportional, even after squeezing, how can it keep the proportion then?
 -- no, it seems to be off a bit when squeezing much, with large font
 -- maybe the scroll-off is what breaks it? what can we expect from stacked, when its just one row anyway?
--- vim.fn.winsave view and winrestview works well when no geom changes, not sure how gracefully it handles it when you apply it to a differen size later
+-- vim.fn.winsave view and winrestview works well when no geom changes, not sure how gracefully it handles it when you apply it to a different size later
 -- hm second time it messes up other windows too (no more stack sandwiches); ah no that is just the command buffer view that has this problem, another thing to solve
 -- vim.fn.winrestview works reasonable when resizing and applying again, maybe thats it? we keep the original winsave, until you act on a window? and apply it everytime?
 --    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
@@ -21,19 +23,19 @@ function M.arrange(windows)
 
     ---@type vim.fn.winsaveview.ret?
     local view1 = nil
-    if windows[1] then
-        vim.api.nvim_win_call(windows[1], function()
-            view1 = vim.fn.winsaveview()
-        end)
-    end
+    -- if windows[1] then
+    --     vim.api.nvim_win_call(windows[1], function()
+    --         view1 = vim.fn.winsaveview()
+    --     end)
+    -- end
 
     ---@type vim.fn.winsaveview.ret?
     local view2 = nil
-    if windows[2] then
-        vim.api.nvim_win_call(windows[2], function()
-            view2 = vim.fn.winsaveview()
-        end)
-    end
+    -- if windows[2] then
+    --     vim.api.nvim_win_call(windows[2], function()
+    --         view2 = vim.fn.winsaveview()
+    --     end)
+    -- end
 
     -- arrange
     for i, w in ipairs(windows) do
@@ -58,6 +60,15 @@ function M.arrange(windows)
         end)
     end
 
+    -- TODO winfixwidth winheight winminheight could make some of this smooth?
+    -- but in general, how to not re-arrange when not needed? or does unrendered rearrangement not forget anything?
+    -- from winrestcmd(): 1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|
+    if #windows >= 2 and windows[2] then
+        vim.api.nvim_win_call(windows[2], function()
+            vim.cmd.wincmd("_")
+        end)
+    end
+
     -- restore stack view, if just one
     if #windows == 2 and windows[2] and view2 then
         vim.api.nvim_win_call(windows[2], function()
@@ -66,18 +77,18 @@ function M.arrange(windows)
     end
 
     -- position stack views, if more than one
-    if #windows >= 3 then
-        for i, w in ipairs(windows) do
-            if i > 1 then
-                vim.api.nvim_win_call(w, function()
-                    -- TODO when switching layouts, this can get forgotten, and stay on 0
-                    -- vim.wo.scrolloff = 0
-                    vim.cmd.normal { "zt", bang = true }
-                    -- TODO cursorline to indicate? or we just know its always the top line?
-                end)
-            end
-        end
-    end
+    -- if #windows >= 3 then
+    --     for i, w in ipairs(windows) do
+    --         if i > 1 then
+    --             vim.api.nvim_win_call(w, function()
+    --                 -- TODO when switching layouts, this can get forgotten, and stay on 0
+    --                 -- vim.wo.scrolloff = 0
+    --                 vim.cmd.normal { "zt", bang = true }
+    --                 -- TODO cursorline to indicate? or we just know its always the top line?
+    --             end)
+    --         end
+    --     end
+    -- end
 end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
@@ -115,6 +126,7 @@ function M.previous()
     --     return
     -- end
     vim.cmd.wincmd("W")
+    vim.cmd.wincmd("_")
 end
 
 -- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
@@ -126,6 +138,7 @@ function M.next()
     --     return
     -- end
     vim.cmd.wincmd("w")
+    vim.cmd.wincmd("_")
 end
 
 ---@param window? integer
