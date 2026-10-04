@@ -3,61 +3,24 @@
 ---@class MainLayout
 local M = {}
 
---[[ draft
-i want to enforce a strict stack semantics, you can only push and pop
-you can fork, but not refocus a lower window when you go and look at it, as done with "wf" right now
-that stack works well for drilling down and keeping a "todo" list
-but often you need to get some context, check how something was done somewhere else
-and then see that while working on the real top of the stack
-that doesnt quite work in stack fashion
-somehow you want to flip those windows, to keep the active editing in the main view
-but that is unstacky, and all the context-windows should not get flat, so you can actually see
-would be nice if some windows are marked as context, maybe visually, and that will be visible, not just one line, when collapsed, and if possible
-would tabs be the right thing then?
-its natural to just ww, find what you need, and then wf or so to get the real thing again
-instead wf might mark as context and pop the stack? and it is attached to the previous as context?
-and it will close when you pop that one?
-and maybe tabs could keep the top and all the context?
---]]
+---@param new_windows? integer[] window handles in layout order: main, stack, stack, ...
+function M.arrange(new_windows)
+    -- TODO if new_window is a subset of all windows, or not from the same tab, i think arrange will mess things up
+    local windows = new_windows or M.get_windows() -- order: main, stack, stack, ...
 
--- TODO arranges seem to change views somehow, especially after a pair of wf wf, or after w space space and close, things move, unexpected
--- when a focused window moves to the stack, its smaller, so its not clear there what to show, you cant show the same
--- showing around the cursor makes most sense? that seems to have been the important part?
--- but then when that window becomes big again, what to show and at what view exactly? the info is lost
--- very clear, and maybe best testet in stacked layout, since they make the stacked view just one row in size
--- vim has some view safe functions, every layout does the logic for the important windows somehow? or for those windows with the same geometry?
--- but even so, even the main window can change, how does vim handle it natively in these cases? hm its quite proportional, even after squeezing, how can it keep the proportion then?
--- no, it seems to be off a bit when squeezing much, with large font
--- maybe the scroll-off is what breaks it? what can we expect from stacked, when its just one row anyway?
--- vim.fn.winsave view and winrestview works well when no geom changes, not sure how gracefully it handles it when you apply it to a different size later
--- hm second time it messes up other windows too (no more stack sandwiches); ah no that is just the command buffer view that has this problem, another thing to solve
--- vim.fn.winrestview works reasonable when resizing and applying again, maybe thats it? we keep the original winsave, until you act on a window? and apply it everytime?
---    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
--- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
--- looks like this { "row", { { "leaf", 1057 }, { "col", { { "leaf", 1056 }, { "leaf", 1055 }, { "leaf", 1011 } } } } }
----@param windows? integer[] window handles in layout order: main, stack, stack, ...
-function M.arrange(windows)
-    -- TODO if windows was not given, then we know already that some things cannot have changed
-    -- TODO if the list of windows is shorter than the actual list, dont we just ignore it but not really change or remove it?
-    windows = windows or M.get_windows() -- order: main, stack, stack, ...
-    local current = vim.api.nvim_get_current_win()
-
-    ---@type vim.fn.winsaveview.ret?
-    local view1 = nil
-    if windows[1] then
-        vim.api.nvim_win_call(windows[1], function()
-            view1 = vim.fn.winsaveview()
-        end)
+    if not windows[1] or not windows[2] then
+        return
     end
 
-    -- TODO hm a stack second view would be good to restore, but it could also be contexts
-    ---@type vim.fn.winsaveview.ret?
-    local view2 = nil
-    -- if windows[2] then
-    --     vim.api.nvim_win_call(windows[2], function()
-    --         view2 = vim.fn.winsaveview()
-    --     end)
-    -- end
+    local current = vim.api.nvim_get_current_win()
+
+    -- TODO seems like just re-applying all saved views works okay, even for the squeezed windows
+    ---@type table<integer,vim.fn.winsaveview.ret>
+    local views = {}
+    for i = 1, #windows do
+        local w = windows[i]
+        views[w] = vim.api.nvim_win_call(w, vim.fn.winsaveview)
+    end
 
     local wl_have = vim.fn.winlayout()
     local wl_want_col = {}
@@ -75,8 +38,8 @@ function M.arrange(windows)
     }
 
     if vim.deep_equal(wl_have, wl_want) then
-    else
-        -- arrange
+        -- vim.notify("fine layout")
+    else -- arrange
         for i, w in ipairs(windows) do
             if i > 1 then
                 vim.api.nvim_win_call(w, function()
@@ -87,48 +50,28 @@ function M.arrange(windows)
                 end)
             end
         end
-        if windows[1] then
-            vim.api.nvim_win_call(windows[1], function()
-                vim.cmd.wincmd("H")
-            end)
-        end
-    end
-
-    -- restore main view
-    if windows[1] and view1 then
         vim.api.nvim_win_call(windows[1], function()
-            vim.fn.winrestview(view1)
-            vim.wo.scrolloff = -1
+            vim.cmd.wincmd("H")
         end)
     end
 
     if current == windows[1] then
-        -- TODO winfixwidth winheight winminheight could make some of this smooth?
-        -- but in general, how to not re-arrange when not needed? or does unrendered rearrangement not forget anything?
-        -- from winrestcmd(): 1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|
         local passed = false
-        -- vim.cmd("vertical wincmd =")
         for i = 1, #windows do
             vim.api.nvim_win_call(windows[i], function()
                 if i == 1 then
                     vim.wo.winfixheight = false
                 elseif i == 2 then
-                    -- vim.cmd.wincmd("_")
-                    -- vim.cmd.resize(999)
                     vim.wo.winfixheight = false
                     vim.cmd.resize(999)
                     if not vim.w.is_context then
                         passed = true
                     end
                 elseif i >= 3 then
-                    -- vim.wo.winfixheight = true
-                    -- vim.cmd.resize(1)
                     if vim.w.is_context and not passed then
-                        -- vim.cmd.resize(999)
                         vim.wo.winfixheight = false
                         vim.cmd.resize(999)
                     else
-                        -- vim.cmd.wincmd("_")
                         vim.wo.winfixheight = true
                         vim.cmd.resize(1)
                         passed = true
@@ -142,32 +85,13 @@ function M.arrange(windows)
             vim.cmd.wincmd("_")
         end)
     end
-    -- if #windows >= 2 and windows[2] then
-    --     vim.api.nvim_win_call(windows[2], function()
-    --         vim.cmd.wincmd("_")
-    --     end)
-    -- end
 
-    -- restore stack view, if just one
-    if #windows == 2 and windows[2] and view2 then
-        vim.api.nvim_win_call(windows[2], function()
-            vim.fn.winrestview(view2)
+    for i = 1, #windows do
+        local w = windows[i]
+        vim.api.nvim_win_call(w, function()
+            vim.fn.winrestview(views[w])
         end)
     end
-
-    -- position stack views, if more than one
-    -- if #windows >= 3 then
-    --     for i, w in ipairs(windows) do
-    --         if i > 1 then
-    --             vim.api.nvim_win_call(w, function()
-    --                 -- TODO when switching layouts, this can get forgotten, and stay on 0
-    --                 -- vim.wo.scrolloff = 0
-    --                 vim.cmd.normal { "zt", bang = true }
-    --                 -- TODO cursorline to indicate? or we just know its always the top line?
-    --             end)
-    --         end
-    --     end
-    -- end
 end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
