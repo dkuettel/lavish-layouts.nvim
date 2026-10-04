@@ -69,6 +69,9 @@ function M.setup()
     --     vim.defer_fn(again, 1000)
     -- end
     -- vim.defer_fn(again, 1000)
+
+    -- for contexts
+    vim.api.nvim_set_hl(0, "CursorLineLavishLayoutContext", { bg = "#458588" })
 end
 
 -- TODO when is a session loaded? after we set the default with this or before?
@@ -104,6 +107,10 @@ end
 ---@param window? integer window to focus on (defaults to current), and if already focused, it will flip with the secondary focused window
 function M.focus(window)
     get().focus(window)
+end
+
+function M.context()
+    get().context()
 end
 
 function M.close()

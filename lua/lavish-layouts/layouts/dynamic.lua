@@ -56,6 +56,10 @@ function M.focus(window)
     get().focus(window)
 end
 
+function M.context()
+    get().context()
+end
+
 function M.close()
     get().close()
 end

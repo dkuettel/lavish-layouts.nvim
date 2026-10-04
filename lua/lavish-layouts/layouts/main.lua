@@ -3,6 +3,23 @@
 ---@class MainLayout
 local M = {}
 
+--[[ draft
+i want to enforce a strict stack semantics, you can only push and pop
+you can fork, but not refocus a lower window when you go and look at it, as done with "wf" right now
+that stack works well for drilling down and keeping a "todo" list
+but often you need to get some context, check how something was done somewhere else
+and then see that while working on the real top of the stack
+that doesnt quite work in stack fashion
+somehow you want to flip those windows, to keep the active editing in the main view
+but that is unstacky, and all the context-windows should not get flat, so you can actually see
+would be nice if some windows are marked as context, maybe visually, and that will be visible, not just one line, when collapsed, and if possible
+would tabs be the right thing then?
+its natural to just ww, find what you need, and then wf or so to get the real thing again
+instead wf might mark as context and pop the stack? and it is attached to the previous as context?
+and it will close when you pop that one?
+and maybe tabs could keep the top and all the context?
+--]]
+
 -- TODO arranges seem to change views somehow, especially after a pair of wf wf, or after w space space and close, things move, unexpected
 -- when a focused window moves to the stack, its smaller, so its not clear there what to show, you cant show the same
 -- showing around the cursor makes most sense? that seems to have been the important part?
@@ -20,15 +37,17 @@ local M = {}
 ---@param windows? integer[] window handles in layout order: main, stack, stack, ...
 function M.arrange(windows)
     windows = windows or M.get_windows() -- order: main, stack, stack, ...
+    local current = vim.api.nvim_get_current_win()
 
     ---@type vim.fn.winsaveview.ret?
     local view1 = nil
-    -- if windows[1] then
-    --     vim.api.nvim_win_call(windows[1], function()
-    --         view1 = vim.fn.winsaveview()
-    --     end)
-    -- end
+    if windows[1] then
+        vim.api.nvim_win_call(windows[1], function()
+            view1 = vim.fn.winsaveview()
+        end)
+    end
 
+    -- TODO hm a stack second view would be good to restore, but it could also be contexts
     ---@type vim.fn.winsaveview.ret?
     local view2 = nil
     -- if windows[2] then
@@ -42,7 +61,9 @@ function M.arrange(windows)
         if i > 1 then
             vim.api.nvim_win_call(w, function()
                 -- TODO this can fail when there is not a enough space and then things become jumbled up
-                vim.cmd.wincmd("J")
+                -- and the layout will get messed up, because it just doesnt fit, pcall at least doesnt spam the user
+                -- should we try to then hide the windows? not impossible, but very cumbersome
+                pcall(vim.cmd.wincmd, "J")
             end)
         end
     end
@@ -60,14 +81,51 @@ function M.arrange(windows)
         end)
     end
 
-    -- TODO winfixwidth winheight winminheight could make some of this smooth?
-    -- but in general, how to not re-arrange when not needed? or does unrendered rearrangement not forget anything?
-    -- from winrestcmd(): 1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|
-    if #windows >= 2 and windows[2] then
-        vim.api.nvim_win_call(windows[2], function()
+    if current == windows[1] then
+        -- TODO winfixwidth winheight winminheight could make some of this smooth?
+        -- but in general, how to not re-arrange when not needed? or does unrendered rearrangement not forget anything?
+        -- from winrestcmd(): 1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|1resize 53|vert 1resize 128|2resize 17|vert 2resize 127|3resize 17|vert 3resize 127|4resize 17|vert 4resize 127|
+        local passed = false
+        -- vim.cmd("vertical wincmd =")
+        for i = 1, #windows do
+            vim.api.nvim_win_call(windows[i], function()
+                if i == 1 then
+                    vim.wo.winfixheight = false
+                elseif i == 2 then
+                    -- vim.cmd.wincmd("_")
+                    -- vim.cmd.resize(999)
+                    vim.wo.winfixheight = false
+                    vim.cmd.resize(999)
+                    if not vim.w.is_context then
+                        passed = true
+                    end
+                elseif i >= 3 then
+                    -- vim.wo.winfixheight = true
+                    -- vim.cmd.resize(1)
+                    if vim.w.is_context and not passed then
+                        -- vim.cmd.resize(999)
+                        vim.wo.winfixheight = false
+                        vim.cmd.resize(999)
+                    else
+                        -- vim.cmd.wincmd("_")
+                        vim.wo.winfixheight = true
+                        vim.cmd.resize(1)
+                        passed = true
+                    end
+                end
+            end)
+        end
+        vim.cmd("vertical wincmd =")
+    else
+        vim.api.nvim_win_call(current, function()
             vim.cmd.wincmd("_")
         end)
     end
+    -- if #windows >= 2 and windows[2] then
+    --     vim.api.nvim_win_call(windows[2], function()
+    --         vim.cmd.wincmd("_")
+    --     end)
+    -- end
 
     -- restore stack view, if just one
     if #windows == 2 and windows[2] and view2 then
@@ -126,7 +184,11 @@ function M.previous()
     --     return
     -- end
     vim.cmd.wincmd("W")
-    vim.cmd.wincmd("_")
+    if vim.fn.winnr() > 1 then
+        vim.cmd.wincmd("_")
+    else
+        M.arrange()
+    end
 end
 
 -- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
@@ -138,7 +200,11 @@ function M.next()
     --     return
     -- end
     vim.cmd.wincmd("w")
-    vim.cmd.wincmd("_")
+    if vim.fn.winnr() > 1 then
+        vim.cmd.wincmd("_")
+    else
+        M.arrange()
+    end
 end
 
 ---@param window? integer
@@ -162,8 +228,45 @@ function M.focus(window)
     end
 end
 
+function M.context()
+    -- TODO we assume this was done in the main window right now
+    vim.w.is_context = true
+    local windows = M.get_windows()
+    for i = 2, #windows do
+        local w = windows[i]
+        if not vim.w[w].is_context then
+            -- NOTE this highlights the current one, which will become a context
+            -- just wip, better highlight the visual of the context? because submodes would hide this cursorline now
+            if vim.wo.winhighlight == "" then
+                vim.wo.winhighlight = "CursorLine:CursorLineLavishLayoutContext"
+            else
+                vim.wo.winhighlight = vim.wo.winhighlight .. ",CursorLine:CursorLineLavishLayoutContext"
+            end
+            local r = table.remove(windows, i)
+            table.insert(windows, 1, r)
+            vim.api.nvim_set_current_win(r)
+            M.arrange(windows)
+            return
+        end
+    end
+    vim.notify("No top of stack to attach context to.")
+end
+
+--- close current main and all context that was attached to it
 function M.close()
-    require("lavish-layouts").close_window_or_clear()
+    -- TODO wip, need to take care of clearing again, assuming now you close the top of the stack always
+    -- require("lavish-layouts").close_window_or_clear()
+    local windows = M.get_windows()
+    for i = 1, #windows do
+        local w = windows[i]
+        if i == 1 then
+            vim.api.nvim_win_close(w, true)
+        elseif vim.w[w].is_context then
+            vim.api.nvim_win_close(w, true)
+        else
+            break
+        end
+    end
     M.arrange()
 end
 
