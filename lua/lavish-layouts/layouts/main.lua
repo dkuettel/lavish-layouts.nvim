@@ -59,21 +59,39 @@ function M.arrange(windows)
     --     end)
     -- end
 
-    -- arrange
+    local wl_have = vim.fn.winlayout()
+    local wl_want_col = {}
     for i, w in ipairs(windows) do
         if i > 1 then
-            vim.api.nvim_win_call(w, function()
-                -- TODO this can fail when there is not a enough space and then things become jumbled up
-                -- and the layout will get messed up, because it just doesnt fit, pcall at least doesnt spam the user
-                -- should we try to then hide the windows? not impossible, but very cumbersome
-                pcall(vim.cmd.wincmd, "J")
-            end)
+            table.insert(wl_want_col, { "leaf", w })
         end
     end
-    if windows[1] then
-        vim.api.nvim_win_call(windows[1], function()
-            vim.cmd.wincmd("H")
-        end)
+    local wl_want = {
+        "row",
+        {
+            { "leaf", windows[1] },
+            { "col", wl_want_col },
+        },
+    }
+
+    if vim.deep_equal(wl_have, wl_want) then
+    else
+        -- arrange
+        for i, w in ipairs(windows) do
+            if i > 1 then
+                vim.api.nvim_win_call(w, function()
+                    -- TODO this can fail when there is not a enough space and then things become jumbled up
+                    -- and the layout will get messed up, because it just doesnt fit, pcall at least doesnt spam the user
+                    -- should we try to then hide the windows? not impossible, but very cumbersome
+                    pcall(vim.cmd.wincmd, "J")
+                end)
+            end
+        end
+        if windows[1] then
+            vim.api.nvim_win_call(windows[1], function()
+                vim.cmd.wincmd("H")
+            end)
+        end
     end
 
     -- restore main view
@@ -180,11 +198,12 @@ function M.previous()
     --     return
     -- end
     vim.cmd.wincmd("W")
-    if vim.fn.winnr() > 1 then
-        vim.cmd.wincmd("_")
-    else
-        M.arrange()
-    end
+    M.arrange()
+    -- if vim.fn.winnr() > 1 then
+    --     vim.cmd.wincmd("_")
+    -- else
+    --     M.arrange()
+    -- end
 end
 
 -- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
@@ -196,11 +215,16 @@ function M.next()
     --     return
     -- end
     vim.cmd.wincmd("w")
-    if vim.fn.winnr() > 1 then
-        vim.cmd.wincmd("_")
-    else
-        M.arrange()
-    end
+    M.arrange()
+    -- if vim.fn.winnr() > 1 then
+    --     -- TODO this seems to ignore winfixheight and co
+    --     vim.cmd.wincmd("_")
+    -- else
+    --     -- TODO there is some magic with views restorted when vim does it when we didnt rebuild the full layout
+    --     -- like the wincmds _ dont recenter after reopening ... either be careful when you call arrange
+    --     -- or make arrange check and not touch so much when the layout is already correct?
+    --     M.arrange()
+    -- end
 end
 
 ---@param window? integer
