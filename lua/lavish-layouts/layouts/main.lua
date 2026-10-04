@@ -205,23 +205,27 @@ end
 
 ---@param window? integer
 function M.focus(window)
-    local focus = window or vim.api.nvim_get_current_win()
     local windows = M.get_windows()
-    if focus == windows[1] then
-        focus = windows[2] or focus
+    if not windows[1] or not windows[2] then
+        return
+    end
+    local new_main = window or vim.api.nvim_get_current_win()
+    local old_main = windows[1]
+    if new_main == old_main then
+        new_main = windows[2]
     end
     windows = vim.tbl_filter(function(v)
-        return v ~= focus
+        return v ~= new_main
     end, windows)
-    windows = { focus, unpack(windows) }
-    vim.api.nvim_set_current_win(focus)
+    windows = { new_main, unpack(windows) }
+    local old_view = vim.api.nvim_win_call(old_main, vim.fn.winsaveview)
+    vim.api.nvim_set_current_win(new_main)
+    local new_view = vim.fn.winsaveview()
     M.arrange(windows)
-    if #windows > 2 then
-        local h = vim.api.nvim_win_get_height(0)
-        vim.wo.scrolloff = math.floor(h / 3)
-        vim.cmd.normal { "zt", bang = true }
-        vim.wo.scrolloff = -1
-    end
+    vim.fn.winrestview(new_view)
+    vim.api.nvim_win_call(old_main, function()
+        vim.fn.winrestview(old_view)
+    end)
 end
 
 function M.context()
