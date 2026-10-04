@@ -3,58 +3,63 @@
 ---@class MainLayout
 local M = {}
 
----@param new_windows? integer[] window handles in layout order: main, stack, stack, ...
-function M.arrange(new_windows)
-    -- TODO if new_window is a subset of all windows, or not from the same tab, i think arrange will mess things up
-    local windows = new_windows or M.get_windows() -- order: main, stack, stack, ...
-
-    if not windows[1] or not windows[2] then
-        return
-    end
-
-    local current = vim.api.nvim_get_current_win()
-
-    -- TODO seems like just re-applying all saved views works okay, even for the squeezed windows
-    ---@type table<integer,vim.fn.winsaveview.ret>
+---@param windows integer[]
+---@return table<integer,vim.fn.winsaveview.ret>
+local function get_all_views(windows)
     local views = {}
     for i = 1, #windows do
         local w = windows[i]
         views[w] = vim.api.nvim_win_call(w, vim.fn.winsaveview)
     end
+    return views
+end
 
-    local wl_have = vim.fn.winlayout()
-    local wl_want_col = {}
+---@param views table<integer,vim.fn.winsaveview.ret>
+local function apply_all_views(views)
+    for win, view in pairs(views) do
+        vim.api.nvim_win_call(win, function()
+            vim.fn.winrestview(view)
+        end)
+    end
+end
+
+---@param windows integer[]
+---@return vim.fn.winlayout.ret
+local function get_target_winlayout(windows)
+    local col = {}
     for i, w in ipairs(windows) do
         if i > 1 then
-            table.insert(wl_want_col, { "leaf", w })
+            table.insert(col, { "leaf", w })
         end
     end
-    local wl_want = {
+    return {
         "row",
         {
             { "leaf", windows[1] },
-            { "col", wl_want_col },
+            { "col", col },
         },
     }
+end
 
-    if vim.deep_equal(wl_have, wl_want) then
-        -- vim.notify("fine layout")
-    else -- arrange
-        for i, w in ipairs(windows) do
-            if i > 1 then
-                vim.api.nvim_win_call(w, function()
-                    -- TODO this can fail when there is not a enough space and then things become jumbled up
-                    -- and the layout will get messed up, because it just doesnt fit, pcall at least doesnt spam the user
-                    -- should we try to then hide the windows? not impossible, but very cumbersome
-                    pcall(vim.cmd.wincmd, "J")
-                end)
-            end
+---@param windows integer[]
+local function contruct_target_winlayout(windows)
+    for i, w in ipairs(windows) do
+        if i > 1 then
+            vim.api.nvim_win_call(w, function()
+                pcall(vim.cmd.wincmd, "J") -- this can fail when there is not enough space
+            end)
         end
+    end
+    if windows[1] then
         vim.api.nvim_win_call(windows[1], function()
             vim.cmd.wincmd("H")
         end)
     end
+end
 
+---@param windows integer[]
+local function resize_target_winlayout(windows)
+    local current = vim.api.nvim_get_current_win()
     if current == windows[1] then
         local passed = false
         for i = 1, #windows do
@@ -85,13 +90,24 @@ function M.arrange(new_windows)
             vim.cmd.wincmd("_")
         end)
     end
+end
 
-    for i = 1, #windows do
-        local w = windows[i]
-        vim.api.nvim_win_call(w, function()
-            vim.fn.winrestview(views[w])
-        end)
+-- TODO if new_window is a subset of all windows, or not from the same tab, i think arrange will mess things up
+---@param new_windows? integer[] window handles in layout order: main, stack, stack, ...
+function M.arrange(new_windows)
+    local windows = new_windows or M.get_windows() -- order: main, stack, stack, ...
+    local views = get_all_views(windows)
+
+    local wl_have = vim.fn.winlayout()
+    local wl_target = get_target_winlayout(windows)
+    if not vim.deep_equal(wl_have, wl_target) then
+        contruct_target_winlayout(windows)
     end
+
+    resize_target_winlayout(windows)
+
+    -- TODO seems like just re-applying all saved views works okay, even for the squeezed windows?
+    apply_all_views(views)
 end
 
 ---@return integer[] windows window handles in layout order: main, stack, stack, ...
