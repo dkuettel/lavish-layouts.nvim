@@ -71,7 +71,7 @@ function M.setup()
     -- vim.defer_fn(again, 1000)
 
     -- for contexts
-    vim.api.nvim_set_hl(0, "CursorLineLavishLayoutContext", { bg = "#458588" })
+    vim.api.nvim_set_hl(0, "CursorLineLavishLayoutContext", { fg = "#ffffff", bg = "#458588" })
 end
 
 -- TODO when is a session loaded? after we set the default with this or before?
