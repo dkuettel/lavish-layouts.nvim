@@ -34,8 +34,11 @@ and maybe tabs could keep the top and all the context?
 -- vim.fn.winrestview works reasonable when resizing and applying again, maybe thats it? we keep the original winsave, until you act on a window? and apply it everytime?
 --    hmm on a second try, with a 1/3 window, it doesnt handle restore very well
 -- what about vim.fn.winlayout()? its only half of it. at least it seems to give only actually visible windows
+-- looks like this { "row", { { "leaf", 1057 }, { "col", { { "leaf", 1056 }, { "leaf", 1055 }, { "leaf", 1011 } } } } }
 ---@param windows? integer[] window handles in layout order: main, stack, stack, ...
 function M.arrange(windows)
+    -- TODO if windows was not given, then we know already that some things cannot have changed
+    -- TODO if the list of windows is shorter than the actual list, dont we just ignore it but not really change or remove it?
     windows = windows or M.get_windows() -- order: main, stack, stack, ...
     local current = vim.api.nvim_get_current_win()
 
@@ -154,7 +157,7 @@ function M.get_windows()
     return require("lavish-layouts.misc").get_windows("forward")
 end
 
--- TODO when running this, i see some flicker, can we hold drawing until all is done?
+-- TODO when running this, i see some flicker, can we hold drawing until all is done? lazyredraw?
 function M.new()
     local stack = M.get_windows()
     local current = vim.api.nvim_get_current_win()
