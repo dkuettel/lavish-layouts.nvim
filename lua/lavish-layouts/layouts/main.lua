@@ -115,7 +115,6 @@ function M.get_windows()
     return require("lavish-layouts.misc").get_windows("forward")
 end
 
--- TODO when running this, i see some flicker, can we hold drawing until all is done? lazyredraw?
 function M.new()
     local windows = M.get_windows()
     local original = vim.api.nvim_get_current_win()
@@ -139,32 +138,12 @@ function M.previous()
     -- end
     vim.cmd.wincmd("W")
     M.arrange()
-    -- if vim.fn.winnr() > 1 then
-    --     vim.cmd.wincmd("_")
-    -- else
-    --     M.arrange()
-    -- end
 end
 
 -- TODO what about we can only edit and focus the main window? the stack is only there to select and pull to main
 function M.next()
-    -- TODO in nvim 0.12 I think nvim_tabpage_list_wins is bugged, it returns all windows, not just the one from the tab
-    -- local focus = vim.api.nvim_get_current_win()
-    -- local windows = vim.api.nvim_tabpage_list_wins(0)
-    -- if focus == windows[#windows] then
-    --     return
-    -- end
     vim.cmd.wincmd("w")
     M.arrange()
-    -- if vim.fn.winnr() > 1 then
-    --     -- TODO this seems to ignore winfixheight and co
-    --     vim.cmd.wincmd("_")
-    -- else
-    --     -- TODO there is some magic with views restorted when vim does it when we didnt rebuild the full layout
-    --     -- like the wincmds _ dont recenter after reopening ... either be careful when you call arrange
-    --     -- or make arrange check and not touch so much when the layout is already correct?
-    --     M.arrange()
-    -- end
 end
 
 ---@param window? integer
