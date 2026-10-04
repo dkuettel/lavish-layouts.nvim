@@ -159,24 +159,17 @@ end
 
 -- TODO when running this, i see some flicker, can we hold drawing until all is done? lazyredraw?
 function M.new()
-    local stack = M.get_windows()
-    local current = vim.api.nvim_get_current_win()
-    local view = nil
-    if current == stack[1] then
-        view = vim.fn.winsaveview()
-    end
+    local windows = M.get_windows()
+    local original = vim.api.nvim_get_current_win()
+    local view = vim.fn.winsaveview()
     vim.cmd.split()
-    local main = vim.api.nvim_get_current_win()
-    local windows = { main, unpack(stack) }
+    local new = vim.api.nvim_get_current_win()
+    table.insert(windows, 1, new)
     M.arrange(windows)
-    if view then
+    vim.fn.winrestview(view)
+    vim.api.nvim_win_call(original, function()
         vim.fn.winrestview(view)
-    else
-        local h = vim.api.nvim_win_get_height(0)
-        vim.wo.scrolloff = math.floor(h / 3)
-        vim.cmd.normal { "zt", bang = true }
-        vim.wo.scrolloff = -1
-    end
+    end)
 end
 
 function M.previous()
