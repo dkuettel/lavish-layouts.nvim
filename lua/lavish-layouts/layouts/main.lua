@@ -172,9 +172,12 @@ function M.focus(window)
 end
 
 function M.context()
-    -- TODO we assume this was done in the main window right now
-    vim.w.is_context = true
     local windows = M.get_windows()
+    if vim.api.nvim_get_current_win() ~= windows[1] then
+        vim.notify("Can only attach context from the main window.")
+        return
+    end
+    vim.w.is_context = true
     for i = 2, #windows do
         local w = windows[i]
         if not vim.w[w].is_context then
@@ -195,18 +198,24 @@ function M.context()
     vim.notify("No top of stack to attach context to.")
 end
 
---- close current main and all context that was attached to it
+--- close current window, and attached context if any
 function M.close()
-    -- TODO wip, need to take care of clearing again, assuming now you close the top of the stack always
-    -- require("lavish-layouts").close_window_or_clear()
+    local close = require("lavish-layouts").close_window_or_clear
     local windows = M.get_windows()
+    local current = vim.api.nvim_get_current_win()
+    local found = false
     for i = 1, #windows do
         local w = windows[i]
-        if i == 1 then
-            vim.api.nvim_win_close(w, true)
-        elseif vim.w[w].is_context then
-            vim.api.nvim_win_close(w, true)
-        else
+        if not found and current == w then
+            local is_context = vim.w[w].is_context
+            close(w)
+            if is_context then
+                break
+            end
+            found = true
+        elseif found and vim.w[w].is_context then
+            close(w)
+        elseif found and not vim.w[w].is_context then
             break
         end
     end

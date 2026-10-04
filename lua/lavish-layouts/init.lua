@@ -127,9 +127,12 @@ function M.close_and_delete()
     get().arrange()
 end
 
-function M.close_window_or_clear()
+-- TODO you can set win, but we assume its the current tabpage
+---@param win? integer
+function M.close_window_or_clear(win)
+    win = win or 0
     if #vim.api.nvim_list_tabpages() > 1 or #vim.api.nvim_tabpage_list_wins(0) > 1 then
-        vim.api.nvim_win_close(0, true)
+        vim.api.nvim_win_close(win, true)
     else
         vim.cmd([[:e .]])
     end
