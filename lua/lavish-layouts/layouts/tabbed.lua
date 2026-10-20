@@ -10,6 +10,10 @@ local function get()
     return require("lavish-layouts.layouts.dynamic")
 end
 
+local function desc()
+    vim.g.LayoutDesc = "tabbed"
+end
+
 -- TODO hm window list between main and tabbed, very difficult
 -- should tabbed just accept whats there?
 -- switching to tabbed otherwise would flatten all
@@ -25,6 +29,7 @@ end
 ---@param windows? integer[]
 function M.arrange(windows)
     get().arrange(windows)
+    desc()
 end
 
 function M.get_windows()
@@ -76,12 +81,14 @@ end
 ---@diagnostic disable-next-line: unused
 function M.focus(window)
     get().focus(window)
+    desc()
 end
 
 function M.close()
     -- vim.cmd("tabclose")
     require("lavish-layouts").close_window_or_clear()
     get().arrange()
+    desc()
 end
 
 function M.context()
@@ -96,6 +103,7 @@ function M.context()
     -- TODO not sure what that does to jump history
     vim.api.nvim_win_set_buf(win, buf)
     vim.fn.winrestview(view)
+    desc()
 end
 
 return M
