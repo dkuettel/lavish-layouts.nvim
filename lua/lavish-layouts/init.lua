@@ -9,9 +9,9 @@ local M = {}
 -- back to main, there is no data to really exactly restore the view you had
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
----@alias ConcreteLayoutName "main" | "stacked" | "none"
----@alias LayoutName "dynamic" | "main" | "stacked" | "none"
----@alias Layout MainLayout | StackedLayout | DynamicLayout | NoneLayout
+---@alias ConcreteLayoutName "main" | "stacked" | "none" | "tabbed"
+---@alias LayoutName "dynamic" | "main" | "stacked" | "none" | "tabbed"
+---@alias Layout DynamicLayout | MainLayout | StackedLayout | NoneLayout | TabbedLayout
 
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
@@ -158,6 +158,10 @@ end
 
 function M.switch_none()
     M.switch("none")
+end
+
+function M.switch_tabbed()
+    M.switch("tabbed")
 end
 
 --- for the current window and rearrange

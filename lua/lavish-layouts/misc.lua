@@ -2,19 +2,31 @@
 
 local M = {}
 
----@type table<LayoutName,Layout>
-local layouts = {
-    main = require("lavish-layouts.layouts.main"),
-    stacked = require("lavish-layouts.layouts.stacked"),
-    dynamic = require("lavish-layouts.layouts.dynamic"),
-    none = require("lavish-layouts.layouts.none"),
-}
+---@param v any
+---@return integer
+function M.assert_integer(v)
+    if type(v) == "number" and math.floor(v) == v then
+        ---@diagnostic disable-next-line: return-type-mismatch
+        return v
+    end
+    error(v .. " is not an integer")
+end
 
 ---@param name? string
 ---@return Layout?
 function M.maybe_get_layout(name)
-    ---@diagnostic disable-next-line: undefined-field
-    return layouts[name]
+    if name == "main" then
+        return require("lavish-layouts.layouts.main")
+    elseif name == "stacked" then
+        return require("lavish-layouts.layouts.stacked")
+    elseif name == "dynamic" then
+        return require("lavish-layouts.layouts.dynamic")
+    elseif name == "none" then
+        return require("lavish-layouts.layouts.none")
+    elseif name == "tabbed" then
+        return require("lavish-layouts.layouts.tabbed")
+    end
+    return nil
 end
 
 ---@param name LayoutName
