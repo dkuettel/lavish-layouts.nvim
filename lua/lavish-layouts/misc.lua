@@ -1,9 +1,13 @@
+---@namespace lavish-layouts
+
 local M = {}
 
+---@type table<LayoutName,Layout>
 local layouts = {
     main = require("lavish-layouts.layouts.main"),
     stacked = require("lavish-layouts.layouts.stacked"),
     dynamic = require("lavish-layouts.layouts.dynamic"),
+    none = require("lavish-layouts.layouts.none"),
 }
 
 ---@param name? string

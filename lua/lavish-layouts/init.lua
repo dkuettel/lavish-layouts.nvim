@@ -10,8 +10,8 @@ local M = {}
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
 ---@alias ConcreteLayoutName "main" | "stacked"
----@alias LayoutName "main" | "stacked" | "dynamic"
----@alias Layout MainLayout | StackedLayout | DynamicLayout
+---@alias LayoutName "main" | "stacked" | "dynamic" | "none"
+---@alias Layout MainLayout | StackedLayout | DynamicLayout | NoneLayout
 
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
 -- that is applied to all tabs, we could also use vim.t.Layout and have it per tab
@@ -148,6 +148,10 @@ end
 
 function M.switch_stacked()
     M.switch("stacked")
+end
+
+function M.switch_none()
+    M.switch("none")
 end
 
 --- for the current window and rearrange
