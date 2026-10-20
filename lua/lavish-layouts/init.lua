@@ -9,8 +9,8 @@ local M = {}
 -- back to main, there is no data to really exactly restore the view you had
 -- before backgrounding it, and its then centered again. could be unintuitive?
 
----@alias ConcreteLayoutName "main" | "stacked"
----@alias LayoutName "main" | "stacked" | "dynamic" | "none"
+---@alias ConcreteLayoutName "main" | "stacked" | "none"
+---@alias LayoutName "dynamic" | "main" | "stacked" | "none"
 ---@alias Layout MainLayout | StackedLayout | DynamicLayout | NoneLayout
 
 -- NOTE we have one global layout (saved as a name in vim.g.Layout)
