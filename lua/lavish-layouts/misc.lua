@@ -13,13 +13,14 @@ local layouts = {
 ---@param name? string
 ---@return Layout?
 function M.maybe_get_layout(name)
+    ---@diagnostic disable-next-line: undefined-field
     return layouts[name]
 end
 
 ---@param name LayoutName
 ---@return Layout
 function M.get_layout(name)
-    ---@diagnostic disable: unnecessary-assert
+    ---@diagnostic disable-next-line: call-non-callable, unnecessary-assert
     local l = assert(M.maybe_get_layout(name))
     return l
 end

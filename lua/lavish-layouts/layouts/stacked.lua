@@ -1,3 +1,5 @@
+---@namespace lavish-layouts
+
 ---@class StackedLayout
 local M = {}
 

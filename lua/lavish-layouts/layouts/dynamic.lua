@@ -1,3 +1,5 @@
+---@namespace lavish-layouts
+
 ---@class DynamicLayout
 local M = {}
 
@@ -57,7 +59,13 @@ function M.focus(window)
 end
 
 function M.context()
-    get().context()
+    -- TODO context only done for main layout
+    local context = get().context
+    if context then
+        context()
+    else
+        vim.print("context not yet implemented for this layout")
+    end
 end
 
 function M.close()
